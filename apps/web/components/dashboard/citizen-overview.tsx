@@ -10,12 +10,15 @@ import {
 	RiTimer2Line,
 	RiCheckboxCircleLine,
 } from "@remixicon/react";
+import { useMemo } from "react";
 import { useRole } from "@/lib/role-context";
-import { getComplaintsByRole, getDepartmentById } from "@/lib/mock-data";
+import { useComplaints, useDepartments } from "@/lib/use-complaints";
 
 export function CitizenOverview() {
-	const { user } = useRole();
-	const myComplaints = user ? getComplaintsByRole(user.role) : [];
+	const { user, role } = useRole();
+	const { data: myComplaints, loading } = useComplaints(role, { citizenEmail: user?.email });
+	const { data: departments } = useDepartments();
+	const deptById = useMemo(() => new Map(departments.map((d) => [d.id, d])), [departments]);
 	const active = myComplaints.filter((c) => c.status !== "resolved" && c.status !== "closed");
 	const resolved = myComplaints.filter((c) => c.status === "resolved");
 
@@ -69,9 +72,11 @@ export function CitizenOverview() {
 								<Link href="/dashboard/submit">Submit your first complaint</Link>
 							</Button>
 						</div>
+					) : loading ? (
+						<p className="text-sm text-muted-foreground">Loading…</p>
 					) : (
 						myComplaints.slice(0, 5).map((c) => {
-							const dept = getDepartmentById(c.departmentId);
+							const dept = c.departmentId ? deptById.get(c.departmentId) : undefined;
 							return (
 								<Link
 									key={c.id}

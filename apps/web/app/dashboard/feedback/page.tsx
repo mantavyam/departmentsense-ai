@@ -9,7 +9,8 @@ import { motion } from "framer-motion";
 import { RiCheckLine, RiStarFill, RiEmotionSadLine, RiEmotionLine, RiEmotionHappyLine } from "@remixicon/react";
 import { AppShell } from "@/components/dashboard/app-shell";
 import { useRole } from "@/lib/role-context";
-import { getComplaintsByRole, getDepartmentById } from "@/lib/mock-data";
+import { useComplaints, useDepartments } from "@/lib/use-complaints";
+import { api } from "@/lib/api";
 
 type Rating = "UNSATISFIED" | "AVERAGE" | "SATISFIED";
 
@@ -21,22 +22,33 @@ const options: { id: Rating; label: string; icon: React.ComponentType<{ classNam
 
 export default function FeedbackPage() {
 	const { user, role } = useRole();
+	const { data: allMine } = useComplaints(role, { citizenEmail: user?.email });
+	const { data: departments } = useDepartments();
 	const myResolved = useMemo(
-		() =>
-			(role ? getComplaintsByRole(role) : []).filter((c) => c.status === "resolved" && !c.resolutionFeedback),
-		[role, user]
+		() => allMine.filter((c) => c.status === "resolved" && !c.resolutionFeedback),
+		[allMine]
 	);
-	const [selected, setSelected] = useState<string | null>(myResolved[0]?.id ?? null);
+	const [selected, setSelected] = useState<string | null>(null);
 	const [rating, setRating] = useState<Rating | null>(null);
 	const [comment, setComment] = useState("");
 	const [submitted, setSubmitted] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+
+	useMemo(() => {
+		if (!selected && myResolved[0]) setSelected(myResolved[0].id);
+	}, [myResolved, selected]);
 
 	const complaint = myResolved.find((c) => c.id === selected) ?? null;
-	const dept = complaint ? getDepartmentById(complaint.departmentId) : null;
+	const dept = complaint ? departments.find((d) => d.id === complaint.departmentId) : null;
 
-	const handleSubmit = () => {
+	const handleSubmit = async () => {
 		if (!complaint || !rating) return;
-		setSubmitted(true);
+		try {
+			await api.updateFeedback(complaint.id, rating);
+			setSubmitted(true);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to submit feedback");
+		}
 	};
 
 	if (myResolved.length === 0 && !submitted) {

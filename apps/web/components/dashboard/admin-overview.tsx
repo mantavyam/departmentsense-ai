@@ -29,12 +29,9 @@ import { Candlestick } from "@/components/charts/candlestick";
 import { SankeyChart } from "@/components/charts/sankey/sankey-chart";
 import { SankeyNode } from "@/components/charts/sankey/sankey-node";
 import { SankeyLink } from "@/components/charts/sankey/sankey-link";
-import { chartMockData, complaints, departments } from "@/lib/mock-data";
-
-const totalComplaints = complaints.length + 1187;
-const resolved = complaints.filter((c) => c.status === "resolved").length + 812;
-const inProgress = complaints.filter((c) => c.status === "in-progress").length + 220;
-const pending = totalComplaints - resolved - inProgress;
+import { chartMockData } from "@/lib/mock-data";
+import { useComplaints, useDepartments } from "@/lib/use-complaints";
+import { useRole } from "@/lib/role-context";
 
 function StatCard({
 	label,
@@ -61,13 +58,24 @@ function StatCard({
 	);
 }
 
-const radarMetrics = departments.map((d) => ({ key: d.slug, label: d.name }));
-const radarData = chartMockData.radar.map((series) => ({
-	label: series.label,
-	values: Object.fromEntries(series.data.map((d, i) => [departments[i]!.slug, d.value])),
-}));
-
 export function AdminOverview() {
+	const { role } = useRole();
+	const { data: complaints } = useComplaints(role);
+	const { data: departments } = useDepartments();
+
+	const totalComplaints = complaints.length + 1187;
+	const resolved = complaints.filter((c) => c.status === "resolved").length + 812;
+	const inProgress = complaints.filter((c) => c.status === "in-progress").length + 220;
+	const pending = totalComplaints - resolved - inProgress;
+
+	const radarMetrics = departments.map((d) => ({ key: d.slug, label: d.name }));
+	const radarData = chartMockData.radar.map((series) => ({
+		label: series.label,
+		values: Object.fromEntries(
+			series.data.map((d, i) => [departments[i]?.slug ?? `m${i}`, d.value])
+		),
+	}));
+
 	return (
 		<div className="space-y-6">
 			<div className="flex items-end justify-between">

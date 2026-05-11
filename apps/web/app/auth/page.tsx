@@ -53,27 +53,38 @@ const options: RoleOption[] = [
 
 export default function AuthPage() {
 	const router = useRouter();
-	const { setRole } = useRole();
+	const { signIn } = useRole();
 	const [selectedRole, setSelectedRole] = useState<RoleOption | null>(null);
 	const [code, setCode] = useState("");
 	const [codeError, setCodeError] = useState<string | null>(null);
+	const [submitting, setSubmitting] = useState(false);
 
-	const handleSelect = (option: RoleOption) => {
+	const handleSelect = async (option: RoleOption) => {
 		if (option.needsCode) {
 			setSelectedRole(option);
 			return;
 		}
-		setRole(option.role);
-		router.push("/dashboard");
+		setSubmitting(true);
+		try {
+			await signIn(option.role);
+			router.push("/dashboard");
+		} catch (err) {
+			setCodeError(err instanceof Error ? err.message : "Sign in failed");
+		} finally {
+			setSubmitting(false);
+		}
 	};
 
-	const verifyCode = () => {
-		const validCodes = departments.map((d) => d.verificationCode);
-		if (validCodes.includes(code.trim().toUpperCase())) {
-			setRole(selectedRole!.role);
+	const verifyCode = async () => {
+		if (!selectedRole) return;
+		setSubmitting(true);
+		try {
+			await signIn(selectedRole.role, code.trim().toUpperCase());
 			router.push("/dashboard");
-		} else {
-			setCodeError("Invalid verification code. Try ELEC-2026, WATER-2026, etc.");
+		} catch {
+			setCodeError("Invalid verification code. Try ELEC-2026, WATER-2026, SANIT-2026, ROADS-2026, PUBLIC-2026, HEALTH-2026.");
+		} finally {
+			setSubmitting(false);
 		}
 	};
 
@@ -132,8 +143,9 @@ export default function AuthPage() {
 										<button
 											key={option.role}
 											type="button"
+											disabled={submitting}
 											onClick={() => handleSelect(option)}
-											className="group w-full text-left"
+											className="group w-full text-left disabled:cursor-wait disabled:opacity-60"
 										>
 											<Card className="flex items-center gap-4 p-4 transition-all hover:border-primary hover:shadow-md">
 												<div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground group-hover:bg-primary group-hover:text-primary-foreground">
@@ -216,7 +228,7 @@ export default function AuthPage() {
 									{codeError && (
 										<p className="text-xs text-destructive">{codeError}</p>
 									)}
-									<Button onClick={verifyCode} className="w-full">
+									<Button onClick={verifyCode} disabled={submitting} className="w-full">
 										Verify and continue
 									</Button>
 									<details className="text-xs text-muted-foreground">

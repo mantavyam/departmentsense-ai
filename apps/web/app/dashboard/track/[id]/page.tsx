@@ -16,8 +16,8 @@ import {
 	RiTimer2Line,
 } from "@remixicon/react";
 import { AppShell } from "@/components/dashboard/app-shell";
-import { complaints, getDepartmentById } from "@/lib/mock-data";
-import { downloadCitizenTicketPDF, downloadAdminClassificationPDF } from "@/lib/pdf";
+import { useComplaint, useDepartments } from "@/lib/use-complaints";
+import { api } from "@/lib/api";
 import { useRole } from "@/lib/role-context";
 
 const TIMELINE_STAGES = [
@@ -32,7 +32,18 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
 	const { id } = use(params);
 	const router = useRouter();
 	const { role } = useRole();
-	const complaint = complaints.find((c) => c.id === id);
+	const { data: complaint, loading } = useComplaint(id);
+	const { data: departments } = useDepartments();
+
+	if (loading) {
+		return (
+			<AppShell>
+				<div className="rounded-xl border border-border p-10 text-center">
+					<p className="text-sm text-muted-foreground">Loading…</p>
+				</div>
+			</AppShell>
+		);
+	}
 
 	if (!complaint) {
 		return (
@@ -47,7 +58,7 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
 		);
 	}
 
-	const dept = getDepartmentById(complaint.departmentId);
+	const dept = departments.find((d) => d.id === complaint.departmentId);
 	const currentStageIdx = TIMELINE_STAGES.findIndex((s) => s.id === complaint.status);
 
 	return (
@@ -82,14 +93,18 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
 						</div>
 					</div>
 					<div className="flex gap-2">
-						<Button variant="outline" onClick={() => downloadCitizenTicketPDF(complaint)}>
-							<RiDownloadLine />
-							Receipt PDF
+						<Button asChild variant="outline">
+							<a href={api.ticketPdfUrl(complaint.id)} download>
+								<RiDownloadLine />
+								Receipt PDF
+							</a>
 						</Button>
 						{role === "admin" && (
-							<Button variant="outline" onClick={() => downloadAdminClassificationPDF(complaint)}>
-								<RiDownloadLine />
-								Reasoning PDF
+							<Button asChild variant="outline">
+								<a href={api.classificationPdfUrl(complaint.id)} download>
+									<RiDownloadLine />
+									Reasoning PDF
+								</a>
 							</Button>
 						)}
 					</div>

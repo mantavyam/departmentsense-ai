@@ -15,12 +15,8 @@ import { FileText, AlertCircle, Clock, CheckCircle2 } from "lucide-react";
 import { AppShell } from "@/components/dashboard/app-shell";
 import { CommandPalette, type Command } from "@/components/uitripled/command-palette";
 import { useRole } from "@/lib/role-context";
-import {
-	getComplaintsByRole,
-	getDepartmentById,
-	complaints as allComplaints,
-} from "@/lib/mock-data";
-import { downloadAdminClassificationPDF } from "@/lib/pdf";
+import { useComplaints, useDepartments } from "@/lib/use-complaints";
+import { api } from "@/lib/api";
 
 const STATUS_COLORS: Record<string, "default" | "secondary" | "warning" | "success" | "destructive" | "outline"> = {
 	submitted: "outline",
@@ -35,16 +31,22 @@ export default function ComplaintsPage() {
 	const router = useRouter();
 	const { role, user } = useRole();
 	const [filterStatus, setFilterStatus] = useState<string>("all");
+	const { data: complaints, loading } = useComplaints(role, {
+		departmentId: role === "dept-head" ? user?.departmentId : undefined,
+		citizenEmail: role === "citizen" ? user?.email : undefined,
+	});
+	const { data: departments } = useDepartments();
+	const deptById = useMemo(() => new Map(departments.map((d) => [d.id, d])), [departments]);
 
-	const list = useMemo(() => {
-		const base = role ? getComplaintsByRole(role, user?.departmentId) : allComplaints;
-		return base.filter((c) => filterStatus === "all" || c.status === filterStatus);
-	}, [role, user, filterStatus]);
+	const list = useMemo(
+		() => complaints.filter((c) => filterStatus === "all" || c.status === filterStatus),
+		[complaints, filterStatus]
+	);
 
 	const commands: Command[] = useMemo(
 		() =>
 			list.map((c) => {
-				const dept = getDepartmentById(c.departmentId);
+				const dept = c.departmentId ? deptById.get(c.departmentId) : undefined;
 				const icon =
 					c.priority === "urgent"
 						? AlertCircle
@@ -77,7 +79,7 @@ export default function ComplaintsPage() {
 						</h1>
 						<p className="mt-1 text-sm text-muted-foreground">
 							{role === "dept-head"
-								? `Showing complaints for ${getDepartmentById(user?.departmentId ?? "")?.name}`
+								? `Showing complaints for ${deptById.get(user?.departmentId ?? "")?.name ?? ""}`
 								: role === "admin"
 								? "System-wide complaint listing"
 								: "Track every complaint you have submitted"}
@@ -113,13 +115,15 @@ export default function ComplaintsPage() {
 						</span>
 					</CardHeader>
 					<CardContent className="space-y-2 pt-0">
-						{list.length === 0 ? (
+						{loading ? (
+							<p className="py-12 text-center text-sm text-muted-foreground">Loading…</p>
+						) : list.length === 0 ? (
 							<p className="py-12 text-center text-sm text-muted-foreground">
 								No complaints match your filter.
 							</p>
 						) : (
 							list.map((c) => {
-								const dept = getDepartmentById(c.departmentId);
+								const dept = c.departmentId ? deptById.get(c.departmentId) : undefined;
 								return (
 									<div
 										key={c.id}
@@ -150,13 +154,15 @@ export default function ComplaintsPage() {
 										<div className="flex items-center gap-2">
 											{role === "admin" && (
 												<Button
+													asChild
 													variant="ghost"
 													size="sm"
-													onClick={() => downloadAdminClassificationPDF(c)}
 													title="Download classification reasoning PDF"
 												>
-													<RiDownloadLine />
-													Report
+													<a href={api.classificationPdfUrl(c.id)} download>
+														<RiDownloadLine />
+														Report
+													</a>
 												</Button>
 											)}
 											<Button asChild variant="ghost" size="sm">

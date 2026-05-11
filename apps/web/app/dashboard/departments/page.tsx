@@ -1,9 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Card } from "@workspace/ui/components/card";
 import { Badge } from "@workspace/ui/components/badge";
 import { AppShell } from "@/components/dashboard/app-shell";
-import { departments, complaints } from "@/lib/mock-data";
+import { useDepartments } from "@/lib/use-complaints";
+import { api } from "@/lib/api";
+import type { Complaint } from "@/lib/mock-data";
 import {
 	RiFlashlightLine,
 	RiDropLine,
@@ -23,6 +26,11 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 };
 
 export default function DepartmentsPage() {
+	const { data: departments } = useDepartments();
+	const [complaints, setComplaints] = useState<Complaint[]>([]);
+	useEffect(() => {
+		api.listComplaints().then(setComplaints).catch(() => setComplaints([]));
+	}, []);
 	return (
 		<AppShell>
 			<div className="space-y-6">

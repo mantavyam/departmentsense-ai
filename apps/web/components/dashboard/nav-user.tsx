@@ -12,7 +12,6 @@ import {
 	DropdownMenuContent,
 	DropdownMenuGroup,
 	DropdownMenuItem,
-	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
@@ -41,22 +40,16 @@ export function NavUser() {
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger
-				nativeButton={false}
-				render={
-					<button
-						type="button"
-						aria-label="Open account menu"
-						className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-					>
-						<Avatar className="size-8">
-							<AvatarImage src={avatarUrl} alt={user?.name ?? "Account"} />
-							<AvatarFallback>{initial}</AvatarFallback>
-						</Avatar>
-					</button>
-				}
-			/>
+				aria-label="Open account menu"
+				className="inline-flex rounded-full outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+			>
+				<Avatar className="size-8">
+					<AvatarImage src={avatarUrl} alt={user?.name ?? "Account"} />
+					<AvatarFallback>{initial}</AvatarFallback>
+				</Avatar>
+			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className="w-64">
-				<DropdownMenuLabel className="flex items-center gap-3 px-3 py-2">
+				<div className="flex items-center gap-3 px-3 py-2">
 					<Avatar className="size-10">
 						<AvatarImage src={avatarUrl} alt={user?.name ?? "Account"} />
 						<AvatarFallback>{initial}</AvatarFallback>
@@ -70,7 +63,7 @@ export function NavUser() {
 							</p>
 						)}
 					</div>
-				</DropdownMenuLabel>
+				</div>
 				<DropdownMenuSeparator />
 				<DropdownMenuGroup>
 					<DropdownMenuItem render={<Link href="/dashboard/settings/profile" />}>

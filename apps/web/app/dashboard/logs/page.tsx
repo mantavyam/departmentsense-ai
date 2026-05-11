@@ -10,8 +10,9 @@ import {
 	type LogLevel,
 } from "@/components/uitripled/interactive-logs-table";
 import { useRole } from "@/lib/role-context";
-import { getComplaintsByRole, getDepartmentById, type Complaint } from "@/lib/mock-data";
-import { downloadAdminClassificationPDF } from "@/lib/pdf";
+import { useComplaints, useDepartments } from "@/lib/use-complaints";
+import { api } from "@/lib/api";
+import type { Complaint } from "@/lib/mock-data";
 
 const priorityToLevel = (p: Complaint["priority"]): LogLevel =>
 	p === "urgent" ? "error" : p === "high" ? "warning" : "info";
@@ -37,11 +38,11 @@ const statusToCode = (s: Complaint["status"]): string => {
 
 export default function LogsPage() {
 	const { role, user } = useRole();
-
-	const complaints = useMemo(
-		() => (role ? getComplaintsByRole(role, user?.departmentId) : []),
-		[role, user]
-	);
+	const { data: complaints } = useComplaints(role, {
+		departmentId: role === "dept-head" ? user?.departmentId : undefined,
+	});
+	const { data: departments } = useDepartments();
+	const deptById = useMemo(() => new Map(departments.map((d) => [d.id, d])), [departments]);
 
 	const complaintById = useMemo(
 		() => new Map(complaints.map((c) => [c.id, c])),
@@ -51,7 +52,7 @@ export default function LogsPage() {
 	const logs: Log[] = useMemo(
 		() =>
 			complaints.map((c) => {
-				const dept = getDepartmentById(c.departmentId);
+				const dept = c.departmentId ? deptById.get(c.departmentId) : undefined;
 				return {
 					id: c.id,
 					timestamp: c.submittedAt,
@@ -77,13 +78,11 @@ export default function LogsPage() {
 								const c = complaintById.get(log.id);
 								if (!c) return null;
 								return (
-									<Button
-										size="sm"
-										variant="outline"
-										onClick={() => downloadAdminClassificationPDF(c)}
-									>
-										<RiDownloadLine />
-										Download classification PDF
+									<Button asChild size="sm" variant="outline">
+										<a href={api.classificationPdfUrl(c.id)} download>
+											<RiDownloadLine />
+											Download classification PDF
+										</a>
 									</Button>
 								);
 							}

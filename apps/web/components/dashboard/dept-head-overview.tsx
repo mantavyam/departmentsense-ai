@@ -5,13 +5,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@work
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { RiArrowRightLine } from "@remixicon/react";
+import { useMemo } from "react";
 import { useRole } from "@/lib/role-context";
-import { getDepartmentById, getComplaintsByRole } from "@/lib/mock-data";
+import { useComplaints, useDepartments } from "@/lib/use-complaints";
 
 export function DeptHeadOverview() {
-	const { user } = useRole();
-	const dept = user?.departmentId ? getDepartmentById(user.departmentId) : undefined;
-	const complaints = user ? getComplaintsByRole(user.role, user.departmentId) : [];
+	const { user, role } = useRole();
+	const { data: departments } = useDepartments();
+	const dept = useMemo(
+		() => departments.find((d) => d.id === user?.departmentId),
+		[departments, user]
+	);
+	const { data: complaints } = useComplaints(role, { departmentId: user?.departmentId });
 
 	const counts = {
 		urgent: complaints.filter((c) => c.priority === "urgent").length,

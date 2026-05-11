@@ -21,15 +21,10 @@ import { LiveLine } from "@/components/charts/live-line";
 import { LiveXAxis } from "@/components/charts/live-x-axis";
 import { LiveYAxis } from "@/components/charts/live-y-axis";
 import { Grid } from "@/components/charts/grid";
-import {
-	simulateClassification,
-	type SimulatedClassification,
-	type ClassificationStep,
-	getDepartmentById,
-	type Complaint,
-} from "@/lib/mock-data";
+import type { ClassificationStep, Complaint } from "@/lib/mock-data";
 import type { LiveLinePoint } from "@/components/charts/live-line-chart";
-import { downloadCitizenTicketPDF } from "@/lib/pdf";
+import { api } from "@/lib/api";
+import { useDepartments } from "@/lib/use-complaints";
 
 type Payload = {
 	name: string;
@@ -40,18 +35,29 @@ type Payload = {
 	language: string;
 };
 
+type Result = {
+	referenceNumber: string;
+	departmentId: string;
+	departmentName: string;
+	priority: string;
+	confidence: number;
+	complaintId: string;
+};
+
 function ProcessingInner() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const payloadParam = searchParams?.get("payload");
+	const { data: departments } = useDepartments();
 
 	const [payload, setPayload] = useState<Payload | null>(null);
 	const [completedSteps, setCompletedSteps] = useState<ClassificationStep[]>([]);
 	const [activeStepIndex, setActiveStepIndex] = useState(0);
-	const [result, setResult] = useState<SimulatedClassification | null>(null);
+	const [result, setResult] = useState<Result | null>(null);
 	const [liveSeries, setLiveSeries] = useState<LiveLinePoint[]>([]);
 	const [currentSeverity, setCurrentSeverity] = useState(0.3);
 	const intervalRef = useRef<NodeJS.Timeout | null>(null);
+	const wsRef = useRef<WebSocket | null>(null);
 
 	useEffect(() => {
 		if (!payloadParam) {
@@ -84,11 +90,56 @@ function ProcessingInner() {
 		}, 200);
 
 		(async () => {
-			const r = await simulateClassification(payload.body, (step, i) => {
+			// Submit complaint to real API. Server runs classification synchronously
+			// and emits WS events on /ws/complaints/{ref}. Open WS before POST so
+			// we don't miss the first frames.
+			const tempRef = `pending-${Date.now()}`;
+			const ws = new WebSocket(api.wsUrl(tempRef));
+			wsRef.current = ws;
+
+			const created = await api.createComplaint({
+				citizenName: payload.name,
+				citizenEmail: payload.email,
+				subject: payload.subject,
+				body: payload.body,
+				language: payload.language,
+				location: payload.location,
+			});
+
+			// After we know ref, also subscribe to the real ref channel for any future events.
+			ws.close();
+			const liveWs = new WebSocket(api.wsUrl(created.referenceNumber));
+			wsRef.current = liveWs;
+			liveWs.onmessage = (e) => {
+				try {
+					const msg = JSON.parse(e.data);
+					if (msg.event === "status_changed") {
+						/* future: react to status updates */
+					}
+				} catch {
+					/* ignore */
+				}
+			};
+
+			// Server response already contains the full reasoning trace + severity.
+			// Replay the steps with delays so the UI animates.
+			const dept = departments.find((d) => d.id === created.departmentId);
+			for (let i = 0; i < created.reasoning.length; i++) {
+				const step = created.reasoning[i]!;
+				await new Promise((r) => setTimeout(r, Math.min(step.durationMs, 600)));
 				setCompletedSteps((prev) => [...prev, step]);
 				setActiveStepIndex(i + 1);
+			}
+
+			setResult({
+				referenceNumber: created.referenceNumber,
+				departmentId: created.departmentId ?? "",
+				departmentName: dept?.name ?? "—",
+				priority: created.priority,
+				confidence: created.confidence,
+				complaintId: created.id,
 			});
-			setResult(r);
+
 			setTimeout(() => {
 				if (intervalRef.current) clearInterval(intervalRef.current);
 			}, 1500);
@@ -96,31 +147,9 @@ function ProcessingInner() {
 
 		return () => {
 			if (intervalRef.current) clearInterval(intervalRef.current);
+			if (wsRef.current) wsRef.current.close();
 		};
-	}, [payload]);
-
-	const handleDownloadTicket = () => {
-		if (!payload || !result) return;
-		const complaint: Complaint = {
-			id: `c-${Date.now()}`,
-			referenceNumber: result.referenceNumber,
-			citizenName: payload.name,
-			citizenEmail: payload.email,
-			subject: payload.subject,
-			body: payload.body,
-			language: payload.language,
-			location: payload.location,
-			submittedAt: new Date().toISOString(),
-			status: "classified",
-			priority: result.priority,
-			departmentId: result.departmentId,
-			confidence: result.confidence,
-			sentimentScore: -0.5,
-			reasoning: result.reasoning,
-			severityTimeline: result.severityTimeline,
-		};
-		downloadCitizenTicketPDF(complaint);
-	};
+	}, [payload, departments]);
 
 	if (!payload) {
 		return (
@@ -248,13 +277,15 @@ function ProcessingInner() {
 								<p className="text-xs uppercase tracking-wider text-muted-foreground">Complaint receipt</p>
 								<h3 className="mt-1 font-heading text-2xl">{result.referenceNumber}</h3>
 								<p className="mt-1 text-sm text-muted-foreground">
-									Department: {getDepartmentById(result.departmentId)?.name}
+									Department: {result.departmentName}
 								</p>
 							</div>
 							<div className="flex gap-2">
-								<Button variant="outline" onClick={handleDownloadTicket}>
-									<RiDownloadLine />
-									Download PDF receipt
+								<Button asChild variant="outline">
+									<a href={api.ticketPdfUrl(result.complaintId)} download>
+										<RiDownloadLine />
+										Download PDF receipt
+									</a>
 								</Button>
 								<Button asChild>
 									<a href="/dashboard/complaints">

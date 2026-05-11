@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card } from "@workspace/ui/components/card";
 import { Badge } from "@workspace/ui/components/badge";
 import { AppShell } from "@/components/dashboard/app-shell";
 import { useRole } from "@/lib/role-context";
-import { getComplaintsByRole, getDepartmentById, type Complaint, type ComplaintStatus } from "@/lib/mock-data";
+import { useDepartments } from "@/lib/use-complaints";
+import { api } from "@/lib/api";
+import type { Complaint, ComplaintStatus } from "@/lib/mock-data";
 
 const COLUMNS: { id: ComplaintStatus; label: string; color: string }[] = [
 	{ id: "classified", label: "New", color: "bg-blue-500" },
@@ -16,22 +18,45 @@ const COLUMNS: { id: ComplaintStatus; label: string; color: string }[] = [
 
 export default function PipelinePage() {
 	const { role, user } = useRole();
-	const initial = useMemo(
-		() => (role ? getComplaintsByRole(role, user?.departmentId) : []),
-		[role, user]
-	);
-	const [items, setItems] = useState<Complaint[]>(initial);
+	const { data: departments } = useDepartments();
+	const deptById = useMemo(() => new Map(departments.map((d) => [d.id, d])), [departments]);
+
+	const [items, setItems] = useState<Complaint[]>([]);
 	const [dragId, setDragId] = useState<string | null>(null);
+
+	useEffect(() => {
+		if (!role) return;
+		api
+			.listComplaints({
+				role,
+				departmentId: role === "dept-head" ? user?.departmentId : undefined,
+			})
+			.then(setItems)
+			.catch(() => setItems([]));
+	}, [role, user?.departmentId]);
 
 	const byColumn = COLUMNS.reduce<Record<string, Complaint[]>>((acc, col) => {
 		acc[col.id] = items.filter((c) => c.status === col.id);
 		return acc;
 	}, {});
 
-	const onDrop = (status: ComplaintStatus) => {
+	const onDrop = async (status: ComplaintStatus) => {
 		if (!dragId) return;
 		setItems((prev) => prev.map((c) => (c.id === dragId ? { ...c, status } : c)));
+		const id = dragId;
 		setDragId(null);
+		try {
+			await api.updateStatus(id, status);
+		} catch {
+			// Rollback on failure — refetch
+			if (role) {
+				const fresh = await api.listComplaints({
+					role,
+					departmentId: role === "dept-head" ? user?.departmentId : undefined,
+				});
+				setItems(fresh);
+			}
+		}
 	};
 
 	return (
@@ -41,8 +66,8 @@ export default function PipelinePage() {
 					<h1 className="font-heading text-3xl tracking-tight">Resolution pipeline</h1>
 					<p className="mt-1 text-sm text-muted-foreground">
 						{role === "admin"
-							? "Drag complaints across stages — all departments"
-							: "Drag complaints across resolution stages"}
+							? "Drag complaints across stages — all departments · changes persist via API"
+							: "Drag complaints across resolution stages · changes persist via API"}
 					</p>
 				</div>
 
@@ -63,7 +88,7 @@ export default function PipelinePage() {
 							</div>
 							<div className="flex-1 space-y-2 overflow-auto">
 								{byColumn[col.id]?.map((c) => {
-									const dept = getDepartmentById(c.departmentId);
+									const dept = c.departmentId ? deptById.get(c.departmentId) : undefined;
 									return (
 										<Card
 											key={c.id}

@@ -3,15 +3,20 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
+    "dev": "concurrently --kill-others-on-fail --names \"web,api\" -c \"green,blue\" \"pnpm run dev:web\" \"pnpm run dev:api\"",
+    "dev:web": "turbo dev",
+    "dev:api": "cd backend && uv run uvicorn app.main:app --port 8000 --reload",
     "build": "turbo build",
-    "dev": "turbo dev",
     "lint": "turbo lint",
     "format": "turbo format",
-    "typecheck": "turbo typecheck"
+    "typecheck": "turbo typecheck",
+    "setup:api": "cd backend && uv sync && cp -n .env.example .env || true",
+    "test:e2e": "pnpm --filter web test:e2e"
   },
   "devDependencies": {
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
+    "concurrently": "^9.0.1",
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "turbo": "^2.8.17",
