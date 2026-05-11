@@ -1,7 +1,8 @@
-import { Geist, Geist_Mono, Manrope, Outfit, Instrument_Serif } from "next/font/google"
+import { Geist_Mono, Outfit, Instrument_Serif } from "next/font/google"
 
 import "@workspace/ui/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
+import { RoleProvider } from "@/lib/role-context"
 import { cn } from "@workspace/ui/lib/utils";
 
 const instrumentSerifHeading = Instrument_Serif({subsets:['latin'],weight:['400'],variable:'--font-heading'});
@@ -25,7 +26,9 @@ export default function RootLayout({
       className={cn("antialiased", fontMono.variable, "font-sans", outfit.variable, instrumentSerifHeading.variable)}
     >
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <RoleProvider>{children}</RoleProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

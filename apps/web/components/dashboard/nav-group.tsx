@@ -1,3 +1,7 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
 	Collapsible,
 	CollapsibleContent,
@@ -17,59 +21,63 @@ import type { SidebarNavGroup } from "@/components/dashboard/app-shared";
 import { RiArrowRightSLine } from "@remixicon/react";
 
 export function NavGroup({ label, items }: SidebarNavGroup) {
+	const pathname = usePathname();
+	const isActive = (path?: string) => !!path && (pathname === path || pathname?.startsWith(path + "/"));
+
 	return (
 		<SidebarGroup>
 			{label && <SidebarGroupLabel>{label}</SidebarGroupLabel>}
 			<SidebarMenu>
-				{items.map((item) => (
-					<Collapsible
-						asChild
-						className="group/collapsible"
-						defaultOpen={
-							!!item.isActive ||
-							item.subItems?.some((i) => !!i.isActive)
-						}
-						key={item.title}
-					>
-						<SidebarMenuItem>
-							{item.subItems?.length ? (
-								<>
-									<CollapsibleTrigger asChild>
-										<SidebarMenuButton isActive={item.isActive}>
-											{item.icon}
-											<span>{item.title}</span>
-											<RiArrowRightSLine className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-										</SidebarMenuButton>
-									</CollapsibleTrigger>
-									<CollapsibleContent>
-										<SidebarMenuSub>
-											{item.subItems?.map((subItem) => (
-												<SidebarMenuSubItem key={subItem.title}>
-													<SidebarMenuSubButton
-														asChild
-														isActive={subItem.isActive}
-													>
-														<a href={subItem.path}>
+				{items.map((item) => {
+					const itemActive = isActive(item.path);
+					const subActive = item.subItems?.some((i) => isActive(i.path));
+					return (
+						<Collapsible
+							className="group/collapsible"
+							defaultOpen={itemActive || subActive}
+							key={item.title}
+						>
+							<SidebarMenuItem>
+								{item.subItems?.length ? (
+									<>
+										<CollapsibleTrigger
+											render={
+												<SidebarMenuButton isActive={itemActive}>
+													{item.icon}
+													<span>{item.title}</span>
+													<RiArrowRightSLine className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+												</SidebarMenuButton>
+											}
+										/>
+										<CollapsibleContent>
+											<SidebarMenuSub>
+												{item.subItems?.map((subItem) => (
+													<SidebarMenuSubItem key={subItem.title}>
+														<SidebarMenuSubButton
+															render={<Link href={subItem.path ?? "#"} />}
+																							isActive={isActive(subItem.path)}
+														>
 															{subItem.icon}
 															<span>{subItem.title}</span>
-														</a>
-													</SidebarMenuSubButton>
-												</SidebarMenuSubItem>
-											))}
-										</SidebarMenuSub>
-									</CollapsibleContent>
-								</>
-							) : (
-								<SidebarMenuButton asChild isActive={item.isActive}>
-									<a href={item.path}>
+														</SidebarMenuSubButton>
+													</SidebarMenuSubItem>
+												))}
+											</SidebarMenuSub>
+										</CollapsibleContent>
+									</>
+								) : (
+									<SidebarMenuButton
+										render={<Link href={item.path ?? "#"} />}
+													isActive={itemActive}
+									>
 										{item.icon}
 										<span>{item.title}</span>
-									</a>
-								</SidebarMenuButton>
-							)}
-						</SidebarMenuItem>
-					</Collapsible>
-				))}
+									</SidebarMenuButton>
+								)}
+							</SidebarMenuItem>
+						</Collapsible>
+					);
+				})}
 			</SidebarMenu>
 		</SidebarGroup>
 	);

@@ -8,16 +8,17 @@ import {
   type Variants,
 } from "framer-motion";
 import { File, Search, Settings, User, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-type Command = {
+export type Command = {
+  id?: string;
   icon: typeof File;
   label: string;
-  shortcut: string;
-  description: string;
+  shortcut?: string;
+  description?: string;
 };
 
-const commands: Command[] = [
+const defaultCommands: Command[] = [
   {
     icon: File,
     label: "New File",
@@ -46,18 +47,57 @@ const commands: Command[] = [
 
 const overlayTransition: Transition = { duration: 0.24, ease: "easeOut" };
 
-export function CommandPalette() {
+export interface CommandPaletteProps {
+  /** Commands shown inside the palette. Falls back to a demo list. */
+  commands?: Command[];
+  /** Callback when a command is selected. Receives the chosen Command. */
+  onSelect?: (cmd: Command) => void;
+  /** Trigger button label. Default: "Search commands…" */
+  triggerLabel?: string;
+  /** Placeholder shown inside the palette search input. */
+  placeholder?: string;
+  /** Bind global ⌘K shortcut to open the palette. Default: true */
+  bindShortcut?: boolean;
+}
+
+export function CommandPalette({
+  commands,
+  onSelect,
+  triggerLabel = "Search commands…",
+  placeholder = "Search…",
+  bindShortcut = true,
+}: CommandPaletteProps = {}) {
+  const items = commands ?? defaultCommands;
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const shouldReduceMotion = useReducedMotion();
 
+  useEffect(() => {
+    if (!bindShortcut) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setIsOpen((v) => !v);
+      }
+      if (e.key === "Escape") setIsOpen(false);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [bindShortcut]);
+
   const filteredCommands = useMemo(
     () =>
-      commands.filter((cmd) =>
-        cmd.label.toLowerCase().includes(query.toLowerCase())
+      items.filter((cmd) =>
+        (cmd.label + " " + (cmd.description ?? "")).toLowerCase().includes(query.toLowerCase())
       ),
-    [query]
+    [items, query]
   );
+
+  const handleSelect = (cmd: Command) => {
+    onSelect?.(cmd);
+    setIsOpen(false);
+    setQuery("");
+  };
 
   const panelVariants: Variants = shouldReduceMotion
     ? {
@@ -93,7 +133,7 @@ export function CommandPalette() {
         whileTap={shouldReduceMotion ? undefined : { scale: 0.98 }}
       >
         <Search className="h-4 w-4 text-primary" aria-hidden />
-        <span className="font-medium">Search commands…</span>
+        <span className="font-medium">{triggerLabel}</span>
         <kbd className="ml-auto rounded-full border border-border/60 bg-white/5 px-2 py-0.5 text-xs text-[var(--muted-foreground)]">
           ⌘K
         </kbd>
@@ -162,7 +202,7 @@ export function CommandPalette() {
                     type="text"
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Search the glassmorphism toolkit…"
+                    placeholder={placeholder}
                     className="flex-1 bg-transparent text-sm text-[var(--muted-foreground)] outline-none placeholder:text-[var(--muted-foreground)]"
                     autoFocus
                   />
@@ -216,6 +256,7 @@ export function CommandPalette() {
                           >
                             <button
                               type="button"
+                              onClick={() => handleSelect(cmd)}
                               className="group flex w-full items-center justify-between rounded-2xl border border-transparent bg-white/5 px-4 py-4 text-left transition-colors duration-200 hover:border-border hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
                             >
                               <div className="flex items-center gap-3">
@@ -231,9 +272,11 @@ export function CommandPalette() {
                                   </span>
                                 </div>
                               </div>
-                              <kbd className="rounded-full border border-border/40 bg-white/5 px-2 py-1 text-xs text-[var(--muted-foreground)] shadow-sm">
-                                {cmd.shortcut}
-                              </kbd>
+                              {cmd.shortcut && (
+                                <kbd className="rounded-full border border-border/40 bg-white/5 px-2 py-1 text-xs text-[var(--muted-foreground)] shadow-sm">
+                                  {cmd.shortcut}
+                                </kbd>
+                              )}
                             </button>
                           </motion.li>
                         );

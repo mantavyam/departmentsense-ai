@@ -29,6 +29,12 @@ flowchart TD
         ROUTE["Router\nDept Assignment + Escalation"]
         DB[("PostgreSQL\nComplaints · Status · Dept")]
         WS["WebSocket\nRealtime Status Push"]
+        PDFGEN["/api/pdf\nReport Generator"]
+    end
+
+    subgraph PDF["PDF Generation"]
+        TICKETPDF["Citizen Ticket PDF\nReference No · Submission Details"]
+        CLASSPDF["Admin Classification Report PDF\nReasoning · Confidence · Severity"]
     end
 
     subgraph HF["Hugging Face"]
@@ -71,6 +77,14 @@ flowchart TD
 
     %% AI reasoning display
     CLASS -->|"reasoning steps"| COT
+
+    %% PDF flows
+    ROUTE -->|"ticket data"| PDFGEN
+    PDFGEN -->|"download stream"| TICKETPDF
+    TICKETPDF -->|"trigger on submit complete"| TT
+    CLASS -->|"reasoning · confidence"| PDFGEN
+    PDFGEN -->|"admin-only download"| CLASSPDF
+    CLASSPDF -->|"available in"| WP
 
     %% Role views
     CITIZEN --> WF

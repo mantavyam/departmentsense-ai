@@ -1,10 +1,5 @@
-import { AppShell } from "@/components/app-shell";
-import { DashboardSkeleton } from "@/components/dashboard-skeleton";
+import { MinimalHero } from "@/components/flux-card-hero";
 
-export default function DemoPage() {
-	return (
-		<AppShell>
-			<DashboardSkeleton />
-		</AppShell>
-	);
+export default function HomePage() {
+	return <MinimalHero />;
 }

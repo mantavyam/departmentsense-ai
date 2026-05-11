@@ -8,9 +8,9 @@ import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 
-type LogLevel = "info" | "warning" | "error";
+export type LogLevel = "info" | "warning" | "error";
 
-interface Log {
+export interface Log {
   id: string;
   timestamp: string;
   level: LogLevel;
@@ -129,10 +129,12 @@ function LogRow({
   log,
   expanded,
   onToggle,
+  action,
 }: {
   log: Log;
   expanded: boolean;
   onToggle: () => void;
+  action?: React.ReactNode;
 }) {
   const formattedTime = new Date(log.timestamp).toLocaleTimeString("en-US", {
     hour: "2-digit",
@@ -238,6 +240,8 @@ function LogRow({
                   ))}
                 </div>
               </div>
+
+              {action && <div className="flex justify-end pt-2">{action}</div>}
             </div>
           </motion.div>
         )}
@@ -395,7 +399,21 @@ function FilterPanel({
   );
 }
 
-export function InteractiveLogsTable() {
+export interface InteractiveLogsTableProps {
+  /** Custom logs to display. Falls back to SAMPLE_LOGS when omitted. */
+  logs?: Log[];
+  /** Title shown above the table. Default: "Logs" */
+  title?: string;
+  /** Per-row action button rendered on the right side of the expanded row. */
+  renderRowAction?: (log: Log) => React.ReactNode;
+}
+
+export function InteractiveLogsTable({
+  logs,
+  title = "Logs",
+  renderRowAction,
+}: InteractiveLogsTableProps = {}) {
+  const sourceLogs = logs ?? SAMPLE_LOGS;
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
@@ -406,7 +424,7 @@ export function InteractiveLogsTable() {
   });
 
   const filteredLogs = useMemo(() => {
-    return SAMPLE_LOGS.filter((log) => {
+    return sourceLogs.filter((log) => {
       const lowerQuery = searchQuery.toLowerCase();
 
       const matchSearch =
@@ -422,20 +440,20 @@ export function InteractiveLogsTable() {
 
       return matchSearch && matchLevel && matchService && matchStatus;
     });
-  }, [filters, searchQuery]);
+  }, [filters, searchQuery, sourceLogs]);
 
   const activeFilters =
     filters.level.length + filters.service.length + filters.status.length;
 
   return (
-    <main className="h-screen w-full bg-background">
+    <main className="h-full w-full bg-background">
       <div className="flex h-full flex-col">
         <div className="border-b border-border bg-card p-6">
           <div className="space-y-4">
             <div>
-              <h1 className="text-2xl font-semibold text-foreground">Logs</h1>
+              <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
               <p className="text-sm text-muted-foreground">
-                {filteredLogs.length} of {SAMPLE_LOGS.length} logs
+                {filteredLogs.length} of {sourceLogs.length} logs
               </p>
             </div>
 
@@ -480,7 +498,7 @@ export function InteractiveLogsTable() {
                 <FilterPanel
                   filters={filters}
                   onChange={setFilters}
-                  logs={SAMPLE_LOGS}
+                  logs={sourceLogs}
                 />
               </motion.div>
             )}
@@ -509,6 +527,7 @@ export function InteractiveLogsTable() {
                             current === log.id ? null : log.id
                           )
                         }
+                        action={renderRowAction?.(log)}
                       />
                     </motion.div>
                   ))

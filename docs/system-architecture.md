@@ -29,6 +29,12 @@ flowchart TD
         ROUTE["Router\nDept Assignment + Escalation"]
         DB[("PostgreSQL\nComplaints · Status · Dept")]
         WS["WebSocket\nRealtime Status Push"]
+        PDFGEN["/api/pdf\nReport Generator"]
+    end
+
+    subgraph PDF["PDF Generation"]
+        TICKETPDF["Citizen Ticket PDF\nReference No · Submission Details"]
+        CLASSPDF["Admin Classification Report PDF\nReasoning · Confidence · Severity"]
     end
 
     subgraph HF["Hugging Face"]
@@ -72,6 +78,14 @@ flowchart TD
     %% AI reasoning display
     CLASS -->|"reasoning steps"| COT
 
+    %% PDF flows
+    ROUTE -->|"ticket data"| PDFGEN
+    PDFGEN -->|"download stream"| TICKETPDF
+    TICKETPDF -->|"trigger on submit complete"| TT
+    CLASS -->|"reasoning · confidence"| PDFGEN
+    PDFGEN -->|"admin-only download"| CLASSPDF
+    CLASSPDF -->|"available in"| WP
+
     %% Role views
     CITIZEN --> WF
     CITIZEN --> TL
@@ -94,6 +108,8 @@ flowchart TD
 | 5. Route | FastAPI | PostgreSQL + WebSocket | Internal |
 | 6. Realtime | WebSocket | animated-list, timeline | WS/SSE |
 | 7. Dashboard | PostgreSQL | news-feed, kanban, analytics | HTTP GET |
+| 8a. Ticket PDF | FastAPI `/api/pdf/ticket` | Citizen browser (download) | HTTP GET, triggered at theater-ticket render |
+| 8b. Classification PDF | FastAPI `/api/pdf/classification` | Admin browser (download) | HTTP GET, admin-only auth gate |
 
 ## Component–Route Mapping
 
@@ -108,3 +124,12 @@ flowchart TD
 | services-grid-block | Admin | `/dashboard/departments` |
 | animated-list | All | Overlay during classification |
 | chain-of-thought | All | Embedded in complaint detail |
+
+## PDF Generation
+
+| Type | Audience | Trigger | Content |
+|------|----------|---------|---------|
+| **Complaint Ticket** | Citizen | After classification completes at theater-ticket render | Reference number, submitted text, assigned department, priority level, submission timestamp |
+| **Classification Report** | Admin only | Manual download from web-performance / interactive-logs-table per complaint | Full reasoning trace from chain-of-thought, model confidence scores, severity assessment from live-line, routing decision history |
+
+Implementation in frontend: `apps/web/lib/pdf.ts` wraps `jspdf` for client-side rendering against mock data; once backend is live, swap to `/api/pdf/*` endpoints.

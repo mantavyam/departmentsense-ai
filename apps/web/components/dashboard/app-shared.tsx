@@ -1,5 +1,16 @@
 import type { ReactNode } from "react";
-import { RiDashboardLine, RiBarChartLine, RiShoppingCartLine, RiFileTextLine, RiGroupLine, RiMegaphoneLine, RiSettings3Line, RiQuestionLine, RiPulseLine } from "@remixicon/react";
+import {
+	RiDashboardLine,
+	RiFileAddLine,
+	RiFileList3Line,
+	RiKanbanView,
+	RiBuilding2Line,
+	RiHistoryLine,
+	RiQuestionLine,
+	RiPulseLine,
+	RiUserSmileLine,
+} from "@remixicon/react";
+import type { Role } from "@/lib/mock-data";
 
 export type SidebarNavItem = {
 	title: string;
@@ -7,6 +18,7 @@ export type SidebarNavItem = {
 	icon?: ReactNode;
 	isActive?: boolean;
 	subItems?: SidebarNavItem[];
+	roles?: Role[];
 };
 
 export type SidebarNavGroup = {
@@ -14,93 +26,62 @@ export type SidebarNavGroup = {
 	items: SidebarNavItem[];
 };
 
-export const navGroups: SidebarNavGroup[] = [
+export const allNavGroups: SidebarNavGroup[] = [
 	{
 		label: "Overview",
 		items: [
 			{
 				title: "Dashboard",
-				path: "#/dashboard",
-				icon: (
-					<RiDashboardLine
-					/>
-				),
-				isActive: true,
-			},
-			{
-				title: "Sales",
-				path: "#/sales",
-				icon: (
-					<RiBarChartLine
-					/>
-				),
+				path: "/dashboard",
+				icon: <RiDashboardLine />,
+				roles: ["admin", "dept-head", "citizen"],
 			},
 		],
 	},
 	{
-		label: "Store",
+		label: "Grievance",
 		items: [
 			{
-				title: "Orders",
-				path: "#/orders",
-				icon: (
-					<RiShoppingCartLine
-					/>
-				),
-				subItems: [
-					{ title: "All orders", path: "#/orders/all" },
-					{ title: "Unfulfilled", path: "#/orders/unfulfilled" },
-					{ title: "Returns", path: "#/orders/returns" },
-				],
+				title: "Submit Complaint",
+				path: "/dashboard/submit",
+				icon: <RiFileAddLine />,
+				roles: ["citizen"],
 			},
 			{
-				title: "Products",
-				path: "#/products",
-				icon: (
-					<RiFileTextLine
-					/>
-				),
-				subItems: [
-					{ title: "Catalog", path: "#/products/catalog" },
-					{ title: "Inventory", path: "#/products/inventory" },
-					{ title: "Collections", path: "#/products/collections" },
-				],
+				title: "My Complaints",
+				path: "/dashboard/complaints",
+				icon: <RiFileList3Line />,
+				roles: ["citizen"],
 			},
 			{
-				title: "Customers",
-				path: "#/customers",
-				icon: (
-					<RiGroupLine
-					/>
-				),
+				title: "All Complaints",
+				path: "/dashboard/complaints",
+				icon: <RiFileList3Line />,
+				roles: ["admin", "dept-head"],
 			},
 			{
-				title: "Marketing",
-				path: "#/marketing",
-				icon: (
-					<RiMegaphoneLine
-					/>
-				),
+				title: "Pipeline",
+				path: "/dashboard/pipeline",
+				icon: <RiKanbanView />,
+				roles: ["admin", "dept-head"],
 			},
-		],
-	},
-	{
-		label: "Settings",
-		items: [
 			{
-				title: "Store settings",
-				path: "#/store-settings",
-				icon: (
-					<RiSettings3Line
-					/>
-				),
-				subItems: [
-					{ title: "Store profile", path: "#/store-settings/profile" },
-					{ title: "Shipping & delivery", path: "#/store-settings/shipping" },
-					{ title: "Payments", path: "#/store-settings/payments" },
-					{ title: "Staff", path: "#/store-settings/staff" },
-					{ title: "Apps", path: "#/store-settings/apps" },
-				],
+				title: "Departments",
+				path: "/dashboard/departments",
+				icon: <RiBuilding2Line />,
+				roles: ["admin"],
+			},
+			{
+				title: "Activity Logs",
+				path: "/dashboard/logs",
+				icon: <RiHistoryLine />,
+				roles: ["admin", "dept-head"],
+			},
+			{
+				title: "Give Feedback",
+				path: "/dashboard/feedback",
+				icon: <RiUserSmileLine />,
+				roles: ["citizen"],
 			},
 		],
 	},
@@ -108,25 +89,31 @@ export const navGroups: SidebarNavGroup[] = [
 
 export const footerNavLinks: SidebarNavItem[] = [
 	{
-		title: "Seller help",
-		path: "#/seller-help",
-		icon: (
-			<RiQuestionLine
-			/>
-		),
+		title: "Help",
+		path: "/dashboard/help",
+		icon: <RiQuestionLine />,
 	},
 	{
-		title: "Platform status",
-		path: "#/status",
-		icon: (
-			<RiPulseLine
-			/>
-		),
+		title: "System Status",
+		path: "/dashboard/status",
+		icon: <RiPulseLine />,
 	},
 ];
 
+export function filterNavForRole(role: Role | null): SidebarNavGroup[] {
+	if (!role) return [];
+	return allNavGroups
+		.map((group) => ({
+			...group,
+			items: group.items.filter((item) => !item.roles || item.roles.includes(role)),
+		}))
+		.filter((group) => group.items.length > 0);
+}
+
+export const navGroups: SidebarNavGroup[] = allNavGroups;
+
 export const navLinks: SidebarNavItem[] = [
-	...navGroups.flatMap((group) =>
+	...allNavGroups.flatMap((group) =>
 		group.items.flatMap((item) =>
 			item.subItems?.length ? [item, ...item.subItems] : [item]
 		)

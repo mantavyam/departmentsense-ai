@@ -27,3 +27,16 @@
 components
 ├── dynamic-island.tsx - Loading State between Multi Step Forms
 ├── family-drawer.tsx - Entry Point for User Input in Application Wide Implementation, Customisable as 'Upload Flow', 'Confirmation Flow' inter alia.
+
+# charts (For Admin Dashboard)
+charts/
+- Area Chart: A composable area chart with gradient fills, tooltips, and hover interactions
+- Bar Chart: A composable bar chart with spring animations, stacked bars, horizontal orientation, and grouped series support
+- Candlestick Chart: A composable OHLC candlestick chart with gradients, patterns, tooltips, and hover interactions
+- Funnel Chart: An animated funnel chart with multi-layer halo rings, hover interactions, and staggered entrance animations
+- Line Chart: A composable line chart with tooltips, markers, and hover interactions
+- Live Line Chart: (use for visualising the severity assessment alongside the chain of thought) Real-time streaming line chart with smooth scrolling, crosshair, and animated axes
+- Pie Chart: A composable pie and donut chart with animated slices, hover interactions, patterns, gradients, and an interactive legend
+- Radar Chart: A composable multi-series radar chart with animated polygons, hover interactions, and customizable metrics
+- Ring Chart: A composable multi-ring progress chart with animated arcs, hover interactions, and a reusable legend component
+- Sankey Chart: A composable sankey diagram for visualizing flow between nodes with animated links and interactive tooltips

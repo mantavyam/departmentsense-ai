@@ -1,18 +1,23 @@
 # CONTEXT
-- the idea for the PROJECT is given in 'docs/idea.md', I will use the hugging face open source models which can perform this grievance classification task, I've already pre installed required major UI Components for the PROJECT which are saved under 'apps/web/components' for the main ones and atomic ones are under 'packages/ui/src/components'.
-- This codebase is a nextjs monorepo, i prefer to user python with fastapi for the backend purpose.
+- the system architecture is provided at 'docs/system-architecture.md'
+- recently frontend layer was implemented with a mocked backend, DB & API, there are some fixes which needs to be resolved before we continue to build the fully functional backend integration with everything in realtime nothing mocked, having implementation of real features application wide.
 
 # TASK
-- First, start by reading the complete context of idea given in  'docs/idea.md' to understand the Project Direction.
-- Second, read the 'docs/ui-directions.md' to understand the intended use cases of pre installed UI Components as per the Project Directions that you understood.
-- Next, Start by Developing a System Architecture Mermaid Diagram and save it in the 'docs' folder, this shall visually display the data flow between frontend, backend, API, Hugging Face inter alia.
-- Lastly Fix the Imports of all UI components :'apps/web/components' & 'packages/ui/src/components'
+- First let's fix the existing frontend layer before we implement the backend, here are things requiring attention:
+	- sidebar : shall always remain contracted by default, user shall be able to switch to different page by just clicking on the button, if hovered on sidebar for more than 2 seconds than it shall expand automatically and as soon as the hover focus is removed from over the sidebar it shall animate and contract automatically.
+	- appbar : the top app bar which contains the sidebar expansion and contraction button and the name of page shall be kept fixed on the screen, it shall not scroll when the user scrolls in the main app shell.
+	- the pages for account settings i.e. profile and preferences shall be moved from the sidebar to the top appbar in the right corner where the avatar is placed already, the dropdown menu (it currently shows an error: "A component that acts as a button expected a native <button> because the `nativeButton` prop is true. Rendering a non-<button> removes native button semantics, which can impact forms and accessibility. Use a real <button> in the `render` prop, or set `nativeButton` to `false`.") shall be fixed and used for the purpose.
+	- for the logs table wherever it is being used you shall only use the provided component not any workaround or wrapped implementation, use the full functionality of the component given in 'apps/web/components/uitripled/interactive-logs-table.tsx'.
+	- remove all the efferd's logo like the one in the auth page and on the dashboard pages of respective user on the top left corner, the svg besides the branding 'Departmentsense'
+	- for all the search components utilised replace them to use the 'apps/web/components/uitripled/command-palette.tsx'
+- Verify you already have complete context of 'docs/system-architecture.md'?
+- Begin Setting up the backend layer, the visual flow of the UI layer has been verified and understood, all requirements have been confirmed.
 
 # GUIDELINES
-- Main Goal is to plan a system architecture which is lean & focussed.
+- Main Goal is to integrate the backend by removing the currently mocked service.
 
 # CONSTRAINTS
-- Mandatorily Gather relevant and complete context before performing a plan of action for your edits.
+- Mandatorily Gather relevant and complete context to generate a TODO list before performing a plan of action for your edits.
 - Use multi step chain of thought reasoning using the mode:
 	- 'Think a lot' - Comprehensive reasoning
 - Do proper structured analysis, take your time freely, think step by step, Let's go. 
