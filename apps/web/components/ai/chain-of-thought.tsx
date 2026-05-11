@@ -21,9 +21,9 @@ import {
   Disclosure,
   DisclosureHeader,
   DisclosurePanel,
-} from "@workspace/ui/components/disclosure"
+} from "./disclosure"
 
-import { useControllableState } from "../hooks/use-controllable-state"
+import { useControllableState } from "@/hooks/use-controllable-state"
 
 type ChainOfThoughtContextValue = {
   isOpen: boolean
@@ -75,7 +75,7 @@ export const ChainOfThought = memo(
         <Disclosure
           className={cn("not-prose max-w-prose", className)}
           onExpandedChange={setIsOpen}
-          expanded={isOpen}
+          isExpanded={isOpen}
           {...props}
         >
           {children}

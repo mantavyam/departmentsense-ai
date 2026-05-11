@@ -2,7 +2,7 @@ import {
 	Collapsible,
 	CollapsibleContent,
 	CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+} from "@workspace/ui/components/collapsible";
 import {
 	SidebarGroup,
 	SidebarGroupLabel,
@@ -12,8 +12,8 @@ import {
 	SidebarMenuSub,
 	SidebarMenuSubButton,
 	SidebarMenuSubItem,
-} from "@/components/ui/sidebar";
-import type { SidebarNavGroup } from "@/components/app-shared";
+} from "@workspace/ui/components/sidebar";
+import type { SidebarNavGroup } from "@/components/dashboard/app-shared";
 import { RiArrowRightSLine } from "@remixicon/react";
 
 export function NavGroup({ label, items }: SidebarNavGroup) {

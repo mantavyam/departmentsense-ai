@@ -44,9 +44,15 @@ importers:
       react:
         specifier: ^19.2.4
         version: 19.2.4
+      react-aria-components:
+        specifier: ^1.17.0
+        version: 1.17.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       react-dom:
         specifier: ^19.2.4
         version: 19.2.4(react@19.2.4)
+      tailwind-variants:
+        specifier: ^3.2.2
+        version: 3.2.2(tailwind-merge@3.6.0)(tailwindcss@4.1.18)
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.1.18

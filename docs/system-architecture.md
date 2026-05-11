@@ -82,3 +82,29 @@ flowchart TD
     ADMIN --> KB
     ADMIN --> NF
 ```
+
+## Data Flow Summary
+
+| Step | Source | Sink | Protocol |
+|------|--------|------|----------|
+| 1. Submit | wizard-form | FastAPI `/api/complaints` | HTTP POST |
+| 2. Preprocess | FastAPI | HF model | Internal |
+| 3. Classify | HF mBERT/XLM-R | FastAPI | HF Inference API |
+| 4. Priority | Sentiment model | FastAPI router | Internal |
+| 5. Route | FastAPI | PostgreSQL + WebSocket | Internal |
+| 6. Realtime | WebSocket | animated-list, timeline | WS/SSE |
+| 7. Dashboard | PostgreSQL | news-feed, kanban, analytics | HTTP GET |
+
+## Component–Route Mapping
+
+| Component | Role | Route |
+|-----------|------|-------|
+| wizard-form | All | `/dashboard/submit` |
+| theater-ticket | Citizen | Overlay after submit |
+| timeline-block | Citizen | `/dashboard/track/:id` |
+| news-feed | All (filtered) | `/dashboard/complaints` |
+| kanban-board | Admin, Dept Head | `/dashboard/pipeline` |
+| web-performance | Admin | `/dashboard` (default) |
+| services-grid-block | Admin | `/dashboard/departments` |
+| animated-list | All | Overlay during classification |
+| chain-of-thought | All | Embedded in complaint detail |

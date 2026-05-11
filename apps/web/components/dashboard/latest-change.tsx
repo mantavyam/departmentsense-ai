@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@workspace/ui/components/button";
 import { RiCloseLine } from "@remixicon/react";
 
 const latestChange = {

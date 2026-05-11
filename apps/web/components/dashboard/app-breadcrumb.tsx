@@ -4,7 +4,7 @@ import {
 	BreadcrumbItem,
 	BreadcrumbList,
 	BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
+} from "@workspace/ui/components/breadcrumb";
 
 /** Current page segment shown in the header — pass a nav item or `{ title, icon? }`. */
 export type AppBreadcrumbPage = {

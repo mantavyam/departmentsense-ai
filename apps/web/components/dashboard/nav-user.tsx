@@ -4,7 +4,7 @@ import {
 	Avatar,
 	AvatarFallback,
 	AvatarImage,
-} from "@/components/ui/avatar";
+} from "@workspace/ui/components/avatar";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -13,7 +13,7 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@workspace/ui/components/dropdown-menu";
 import { RiUserLine, RiNotification3Line, RiCommandLine, RiLifebuoyLine, RiBookOpenLine, RiBankCardLine, RiLogoutBoxRLine } from "@remixicon/react";
 
 const user = {

@@ -1,10 +1,10 @@
-import { Kbd, KbdGroup } from "@/components/ui/kbd";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Kbd, KbdGroup } from "@workspace/ui/components/kbd";
+import { SidebarTrigger } from "@workspace/ui/components/sidebar";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@workspace/ui/components/tooltip";
 
 export function CustomSidebarTrigger() {
 	return (

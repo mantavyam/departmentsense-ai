@@ -1,7 +1,7 @@
 "use client";
 
-import { LogoIcon } from "@/components/logo";
-import { Button } from "@/components/ui/button";
+import { LogoIcon } from "@/components/dashboard/logo";
+import { Button } from "@workspace/ui/components/button";
 import {
 	Sidebar,
 	SidebarContent,
@@ -11,10 +11,10 @@ import {
 	SidebarMenu,
 	SidebarMenuButton,
 	SidebarMenuItem,
-} from "@/components/ui/sidebar";
-import { NavGroup } from "@/components/2/nav-group";
-import { footerNavLinks, navGroups } from "@/components/app-shared";
-import { LatestChange } from "@/components/latest-change";
+} from "@workspace/ui/components/sidebar";
+import { NavGroup } from "@/components/dashboard/nav-group";
+import { footerNavLinks, navGroups } from "@/components/dashboard/app-shared";
+import { LatestChange } from "@/components/dashboard/latest-change";
 import { RiAddLine, RiSearchLine } from "@remixicon/react";
 
 export function AppSidebar() {

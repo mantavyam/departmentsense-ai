@@ -17,7 +17,7 @@ import {
 } from "react-aria-components"
 import { tv } from "tailwind-variants"
 
-import { cn } from "../lib/utils"
+import { cn } from "@workspace/ui/lib/utils"
 
 const disclosure = tv({
   base: "group",
@@ -48,6 +48,7 @@ const chevron = tv({
 
 export interface DisclosureProps extends AriaDisclosureProps {
   children: React.ReactNode
+  className?: string
 }
 
 export function Disclosure({ children, ...props }: DisclosureProps) {
@@ -85,6 +86,7 @@ export function DisclosureHeader({ children }: DisclosureHeaderProps) {
 
 export interface DisclosurePanelProps extends AriaDisclosurePanelProps {
   children: React.ReactNode
+  className?: string
 }
 
 export function DisclosurePanel({ children, ...props }: DisclosurePanelProps) {

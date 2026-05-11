@@ -1,15 +1,15 @@
 "use client";
 
 import type React from "react";
-import { Logo } from "@/components/logo";
+import { Logo } from "@/components/auth/logo";
 import { Button } from "@workspace/ui/components/button";
 import {
 	InputGroup,
 	InputGroupAddon,
 	InputGroupInput,
 } from "@workspace/ui/components/input-group";
-import { AuthDivider } from "@/components/auth-divider";
-import { FloatingPaths } from "@/components/floating-paths";
+import { AuthDivider } from "@/components/auth/auth-divider";
+import { FloatingPaths } from "@/components/auth/floating-paths";
 import { RiArrowLeftSLine, RiAtLine } from "@remixicon/react";
 
 export function AuthPage() {

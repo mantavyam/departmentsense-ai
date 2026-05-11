@@ -1,6 +1,6 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
+import { Card } from "@workspace/ui/components/card";
 import { motion, type Variants } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
 
