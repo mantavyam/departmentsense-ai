@@ -11,8 +11,6 @@ Feedback = Literal["UNSATISFIED", "AVERAGE", "SATISFIED"]
 
 
 class CamelModel(BaseModel):
-    """Base: snake_case fields in Python, camelCase JSON in/out."""
-
     model_config = ConfigDict(
         from_attributes=True,
         populate_by_name=True,
@@ -26,9 +24,34 @@ class DepartmentOut(CamelModel):
     name: str
     description: str
     head_name: str
+    officer_address: str
+    officer_contact: str
+    officer_email: str
     icon: str
     color: str
-    verification_code: str
+    verification_code: str | None = None
+
+
+class DepartmentCreate(CamelModel):
+    name: str = Field(min_length=2)
+    description: str = ""
+    head_name: str = ""
+    officer_address: str = ""
+    officer_contact: str = ""
+    officer_email: str = ""
+    icon: str = "Building2"
+    color: str = "#64748b"
+
+
+class DepartmentUpdate(CamelModel):
+    name: str | None = None
+    description: str | None = None
+    head_name: str | None = None
+    officer_address: str | None = None
+    officer_contact: str | None = None
+    officer_email: str | None = None
+    icon: str | None = None
+    color: str | None = None
 
 
 class ReasoningStepOut(CamelModel):
@@ -81,8 +104,16 @@ class FeedbackUpdate(CamelModel):
     feedback: Feedback
 
 
+class SignupRequest(CamelModel):
+    name: str = Field(min_length=2)
+    email: EmailStr
+    password: str = Field(min_length=8)
+
+
 class LoginRequest(CamelModel):
     role: Role
+    email: EmailStr | None = None
+    password: str | None = None
     verification_code: str | None = None
 
 
@@ -99,11 +130,6 @@ class LoginResponse(CamelModel):
     user: LoginUser
 
 
-class ClassificationResult(CamelModel):
-    reference_number: str
+class GeneratedCode(CamelModel):
     department_id: str
-    department_name: str
-    priority: Priority
-    confidence: float
-    reasoning: list[ReasoningStepOut]
-    severity_timeline: list[SeverityPointOut]
+    verification_code: str

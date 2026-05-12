@@ -18,8 +18,6 @@ import {
 import {
 	RiUserLine,
 	RiSettings4Line,
-	RiNotification3Line,
-	RiLifebuoyLine,
 	RiLogoutBoxRLine,
 	RiShieldUserLine,
 } from "@remixicon/react";
@@ -73,17 +71,6 @@ export function NavUser() {
 					<DropdownMenuItem render={<Link href="/dashboard/settings/account" />}>
 						<RiSettings4Line />
 						Preferences
-					</DropdownMenuItem>
-				</DropdownMenuGroup>
-				<DropdownMenuSeparator />
-				<DropdownMenuGroup>
-					<DropdownMenuItem>
-						<RiNotification3Line />
-						Notifications
-					</DropdownMenuItem>
-					<DropdownMenuItem>
-						<RiLifebuoyLine />
-						Help & support
 					</DropdownMenuItem>
 				</DropdownMenuGroup>
 				{role === "admin" && (

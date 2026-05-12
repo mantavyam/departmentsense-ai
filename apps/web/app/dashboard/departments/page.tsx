@@ -1,100 +1,126 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Card } from "@workspace/ui/components/card";
-import { Badge } from "@workspace/ui/components/badge";
+import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/dashboard/app-shell";
-import { useDepartments } from "@/lib/use-complaints";
-import { api } from "@/lib/api";
-import type { Complaint } from "@/lib/mock-data";
+import { ServicesGridBlock } from "@/components/uitripled/services-grid-block";
 import {
-	RiFlashlightLine,
-	RiDropLine,
-	RiDeleteBin2Line,
-	RiRoadMapLine,
-	RiBuildingLine,
-	RiHeartPulseLine,
-} from "@remixicon/react";
-
-const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-	Zap: RiFlashlightLine,
-	Droplet: RiDropLine,
-	Trash2: RiDeleteBin2Line,
-	Construction: RiRoadMapLine,
-	Building2: RiBuildingLine,
-	Heart: RiHeartPulseLine,
-};
+	DepartmentWizard,
+	type DepartmentFormValues,
+} from "@/components/uitripled/department-wizard";
+import { Skeleton } from "@workspace/ui/components/skeleton";
+import { Dialog, DialogContent } from "@workspace/ui/components/dialog";
+import { Input } from "@workspace/ui/components/input";
+import { api } from "@/lib/api";
+import { useRole } from "@/lib/role-context";
+import type { Department } from "@/lib/mock-data";
 
 export default function DepartmentsPage() {
-	const { data: departments } = useDepartments();
-	const [complaints, setComplaints] = useState<Complaint[]>([]);
-	useEffect(() => {
-		api.listComplaints().then(setComplaints).catch(() => setComplaints([]));
+	const { role } = useRole();
+	const [departments, setDepartments] = useState<Department[]>([]);
+	const [loading, setLoading] = useState(true);
+	const [wizardOpen, setWizardOpen] = useState(false);
+	const [filter, setFilter] = useState("");
+
+	const refresh = useCallback(async () => {
+		setLoading(true);
+		try {
+			const data = await api.listDepartments();
+			setDepartments(data);
+		} finally {
+			setLoading(false);
+		}
 	}, []);
+
+	useEffect(() => {
+		void refresh();
+	}, [refresh]);
+
+	const handleGenerateCode = async (dept: Department) => {
+		const res = await api.generateDepartmentCode(dept.id);
+		setDepartments((prev) =>
+			prev.map((d) =>
+				d.id === dept.id ? { ...d, verificationCode: res.verificationCode } : d
+			)
+		);
+	};
+
+	const handleDelete = async (dept: Department) => {
+		if (!confirm(`Delete department "${dept.name}"? Officer accounts will be detached, not deleted.`)) {
+			return;
+		}
+		await api.deleteDepartment(dept.id);
+		setDepartments((prev) => prev.filter((d) => d.id !== dept.id));
+	};
+
+	const handleSave = async (values: DepartmentFormValues) => {
+		const created = await api.createDepartment(values);
+		setDepartments((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+		return { id: created.id };
+	};
+
+	const visible = filter
+		? departments.filter((d) =>
+				`${d.name} ${d.headName} ${d.officerEmail}`.toLowerCase().includes(filter.toLowerCase())
+		  )
+		: departments;
+
+	const isAdmin = role === "admin";
+
 	return (
 		<AppShell>
 			<div className="space-y-6">
-				<div>
-					<h1 className="font-heading text-3xl tracking-tight">Departments</h1>
-					<p className="mt-1 text-sm text-muted-foreground">
-						All registered departments and their assigned verification codes.
-					</p>
+				<div className="flex flex-wrap items-center justify-between gap-3">
+					<Input
+						value={filter}
+						onChange={(e) => setFilter(e.target.value)}
+						placeholder="Search departments, officers, emails…"
+						className="max-w-md"
+					/>
+					<span className="text-sm text-muted-foreground">
+						{visible.length} of {departments.length}
+					</span>
 				</div>
 
-				<div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-					{departments.map((d) => {
-						const Icon = iconMap[d.icon] ?? RiBuildingLine;
-						const count = complaints.filter((c) => c.departmentId === d.id).length;
-						const active = complaints.filter(
-							(c) => c.departmentId === d.id && c.status !== "resolved"
-						).length;
-						return (
-							<Card key={d.id} className="overflow-hidden">
-								<div
-									className="h-2 w-full"
-									style={{ backgroundColor: d.color }}
-								/>
-								<div className="p-5">
-									<div className="flex items-start gap-3">
-										<div
-											className="flex size-11 items-center justify-center rounded-lg"
-											style={{ backgroundColor: `${d.color}20`, color: d.color }}
-										>
-											<Icon className="size-5" />
-										</div>
-										<div className="flex-1">
-											<h3 className="font-semibold">{d.name}</h3>
-											<p className="mt-0.5 text-xs text-muted-foreground">{d.description}</p>
-										</div>
-									</div>
-
-									<dl className="mt-4 grid grid-cols-3 gap-2 border-t border-border pt-4 text-center">
-										<div>
-											<dt className="text-xs text-muted-foreground">Total</dt>
-											<dd className="text-lg font-semibold">{count}</dd>
-										</div>
-										<div>
-											<dt className="text-xs text-muted-foreground">Active</dt>
-											<dd className="text-lg font-semibold">{active}</dd>
-										</div>
-										<div>
-											<dt className="text-xs text-muted-foreground">Head</dt>
-											<dd className="truncate text-xs font-medium">{d.headName}</dd>
-										</div>
-									</dl>
-
-									<div className="mt-4 flex items-center justify-between border-t border-border pt-4">
-										<span className="text-xs text-muted-foreground">Verification code</span>
-										<Badge variant="outline" className="font-mono">
-											{d.verificationCode}
-										</Badge>
-									</div>
-								</div>
-							</Card>
-						);
-					})}
-				</div>
+				{loading ? (
+					<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+						{Array.from({ length: 6 }).map((_, i) => (
+							<Skeleton key={i} className="h-56 w-full" />
+						))}
+					</div>
+				) : (
+					<ServicesGridBlock
+						departments={visible}
+						mode={isAdmin ? "admin" : "view"}
+						heading="Government Departments"
+						subheading={
+							isAdmin
+								? "Create new departments, assign officers, and generate the 6-digit codes they use to sign in."
+								: "Browse departments and the codes that grant their officers dashboard access."
+						}
+						onGenerateCode={isAdmin ? handleGenerateCode : undefined}
+						onDelete={isAdmin ? handleDelete : undefined}
+						onCreate={isAdmin ? () => setWizardOpen(true) : undefined}
+					/>
+				)}
 			</div>
+
+			<Dialog open={wizardOpen} onOpenChange={setWizardOpen}>
+				<DialogContent className="max-w-5xl p-0 border-none bg-transparent shadow-none">
+					<DepartmentWizard
+						onClose={() => setWizardOpen(false)}
+						onSave={handleSave}
+						onGenerateCode={async (id) => {
+							const res = await api.generateDepartmentCode(id);
+							setDepartments((prev) =>
+								prev.map((d) =>
+									d.id === id ? { ...d, verificationCode: res.verificationCode } : d
+								)
+							);
+							return { verificationCode: res.verificationCode };
+						}}
+					/>
+				</DialogContent>
+			</Dialog>
 		</AppShell>
 	);
 }

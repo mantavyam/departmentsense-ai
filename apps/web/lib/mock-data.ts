@@ -6,9 +6,12 @@ export type Department = {
   slug: string;
   description: string;
   headName: string;
+  officerAddress: string;
+  officerContact: string;
+  officerEmail: string;
   icon: string;
   color: string;
-  verificationCode: string;
+  verificationCode: string | null;
 };
 
 export type ComplaintStatus =
@@ -49,6 +52,12 @@ export type Complaint = {
   resolutionFeedback?: "UNSATISFIED" | "AVERAGE" | "SATISFIED";
 };
 
+const baseFields = {
+  officerAddress: "",
+  officerContact: "",
+  officerEmail: "",
+};
+
 export const departments: Department[] = [
   {
     id: "dept-electricity",
@@ -58,7 +67,8 @@ export const departments: Department[] = [
     headName: "Rajesh Kumar",
     icon: "Zap",
     color: "#f59e0b",
-    verificationCode: "ELEC-2026",
+    verificationCode: null,
+    ...baseFields,
   },
   {
     id: "dept-water",
@@ -68,7 +78,8 @@ export const departments: Department[] = [
     headName: "Priya Sharma",
     icon: "Droplet",
     color: "#3b82f6",
-    verificationCode: "WATER-2026",
+    verificationCode: null,
+    ...baseFields,
   },
   {
     id: "dept-sanitation",
@@ -78,7 +89,8 @@ export const departments: Department[] = [
     headName: "Amit Patel",
     icon: "Trash2",
     color: "#10b981",
-    verificationCode: "SANIT-2026",
+    verificationCode: null,
+    ...baseFields,
   },
   {
     id: "dept-roads",
@@ -88,7 +100,8 @@ export const departments: Department[] = [
     headName: "Sunita Iyer",
     icon: "Construction",
     color: "#8b5cf6",
-    verificationCode: "ROADS-2026",
+    verificationCode: null,
+    ...baseFields,
   },
   {
     id: "dept-public-services",
@@ -98,7 +111,8 @@ export const departments: Department[] = [
     headName: "Vikram Singh",
     icon: "Building2",
     color: "#ec4899",
-    verificationCode: "PUBLIC-2026",
+    verificationCode: null,
+    ...baseFields,
   },
   {
     id: "dept-health",
@@ -108,7 +122,8 @@ export const departments: Department[] = [
     headName: "Dr. Anjali Mehta",
     icon: "Heart",
     color: "#ef4444",
-    verificationCode: "HEALTH-2026",
+    verificationCode: null,
+    ...baseFields,
   },
 ];
 

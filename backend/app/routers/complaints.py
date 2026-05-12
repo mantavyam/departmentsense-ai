@@ -43,10 +43,10 @@ async def list_complaints(
     priority: Annotated[str | None, Query()] = None,
 ) -> list[ComplaintOut]:
     stmt = select(Complaint).options(*_eager()).order_by(Complaint.submitted_at.desc())
-    if role == "dept-head" and department_id:
-        stmt = stmt.where(Complaint.department_id == department_id)
-    elif role == "citizen" and citizen_email:
+    if citizen_email:
         stmt = stmt.where(Complaint.citizen_email == citizen_email)
+    elif role == "dept-head" and department_id:
+        stmt = stmt.where(Complaint.department_id == department_id)
     if status:
         stmt = stmt.where(Complaint.status == status)
     if priority:
@@ -86,8 +86,10 @@ async def create_complaint(payload: ComplaintCreate, db: AsyncSession = Depends(
     await db.flush()
     await manager.broadcast(ref, {"event": "submitted", "referenceNumber": ref, "complaintId": cid})
 
-    classification = await classify_text(payload.body)
-    dept = await db.scalar(select(Department).where(Department.id == classification.department_id))
+    dept_rows = (await db.scalars(select(Department))).all()
+    dept_tuples = [(d.id, d.name) for d in dept_rows]
+    classification = await classify_text(payload.body, dept_tuples)
+    dept = next((d for d in dept_rows if d.id == classification.department_id), None)
 
     reasoning = build_reasoning(payload.subject, dept.name if dept else "Public Services")
     severity = build_severity_timeline(classification.priority)

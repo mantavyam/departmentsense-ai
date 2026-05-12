@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     hf_sentiment_model: str = "cardiffnlp/twitter-xlm-roberta-base-sentiment"
     use_local_ml: bool = False
 
+    admin_email: str = "admin@gov.in"
+    admin_password: str = "ChangeMe-2026!"
+    admin_name: str = "System Administrator"
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -10,9 +10,10 @@ function ThemeProvider({
   return (
     <NextThemesProvider
       attribute="class"
-      defaultTheme="system"
-      enableSystem
+      defaultTheme="light"
+      enableSystem={false}
       disableTransitionOnChange
+      storageKey="departmentsense.theme"
       {...props}
     >
       <ThemeHotkey />
@@ -44,6 +45,10 @@ function ThemeHotkey() {
       }
 
       if (event.metaKey || event.ctrlKey || event.altKey) {
+        return
+      }
+
+      if (typeof event.key !== "string") {
         return
       }
 

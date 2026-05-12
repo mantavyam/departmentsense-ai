@@ -9,7 +9,8 @@ class User(Base):
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     name: Mapped[str] = mapped_column(String(128))
-    email: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    email: Mapped[str] = mapped_column(String(256), unique=True, index=True)
     role: Mapped[str] = mapped_column(String(32))  # admin | dept-head | citizen
     department_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    password_hash: Mapped[str] = mapped_column(String(256))
+    # citizen + admin store bcrypt hash; dept-head logs in via dept verification_code only.
+    password_hash: Mapped[str | None] = mapped_column(String(256), nullable=True)

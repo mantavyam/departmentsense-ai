@@ -4,208 +4,216 @@ import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { Card } from "@workspace/ui/components/card";
 import { motion } from "framer-motion";
-import {
-  BarChart3,
-  Code,
-  Palette,
-  Rocket,
-  Settings,
-  Shield,
-  Users,
-  Zap,
-} from "lucide-react";
+import { useState } from "react";
+import Image from "next/image";
+import { Copy, Check, Edit3, Trash, RefreshCw } from "lucide-react";
+import type { Department } from "@/lib/mock-data";
 
-const services = [
-  {
-    icon: Code,
-    title: "Web Development",
-    description:
-      "Build modern, responsive websites with cutting-edge technologies and best practices.",
-    features: ["React & Next.js", "TypeScript", "Performance Optimized"],
-    iconColor: "text-blue-500",
-    bgColor: "bg-blue-500/10",
-  },
-  {
-    icon: Palette,
-    title: "UI/UX Design",
-    description:
-      "Create beautiful, intuitive interfaces that users love and convert.",
-    features: ["User Research", "Wireframing", "Prototyping"],
-    iconColor: "text-purple-500",
-    bgColor: "bg-purple-500/10",
-  },
-  {
-    icon: Rocket,
-    title: "Product Strategy",
-    description:
-      "Plan and execute product roadmaps that align with business goals.",
-    features: ["Market Analysis", "MVP Planning", "Go-to-Market"],
-    iconColor: "text-orange-500",
-    bgColor: "bg-orange-500/10",
-  },
-  {
-    icon: Shield,
-    title: "Security & Compliance",
-    description:
-      "Protect your application with enterprise-grade security measures.",
-    features: ["Data Encryption", "GDPR Compliant", "Security Audits"],
-    iconColor: "text-green-500",
-    bgColor: "bg-green-500/10",
-  },
-  {
-    icon: Zap,
-    title: "Performance",
-    description:
-      "Optimize your applications for speed, reliability, and scalability.",
-    features: ["Code Splitting", "Caching", "CDN Integration"],
-    iconColor: "text-yellow-500",
-    bgColor: "bg-yellow-500/10",
-  },
-  {
-    icon: Users,
-    title: "Team Collaboration",
-    description: "Tools and workflows that enable seamless team communication.",
-    features: ["Real-time Sync", "Version Control", "Comments"],
-    iconColor: "text-indigo-500",
-    bgColor: "bg-indigo-500/10",
-  },
-  {
-    icon: BarChart3,
-    title: "Analytics & Insights",
-    description:
-      "Track, measure, and analyze your application performance metrics.",
-    features: ["Custom Dashboards", "Real-time Data", "Reports"],
-    iconColor: "text-pink-500",
-    bgColor: "bg-pink-500/10",
-  },
-  {
-    icon: Settings,
-    title: "API Integration",
-    description:
-      "Connect with any third-party service through our flexible API.",
-    features: ["RESTful APIs", "Webhooks", "Documentation"],
-    iconColor: "text-slate-500",
-    bgColor: "bg-slate-500/10",
-  },
-];
+const DEPT_LOGO = "/goi-logo.png";
 
-export function ServicesGridBlock() {
-  return (
-    <section className="w-full bg-background px-4 py-16 md:py-24">
-      <div className="mx-auto max-w-7xl">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="mb-12 text-center md:mb-16"
-        >
-          <Badge className="mb-4" variant="secondary">
-            What We Offer
-          </Badge>
-          <h2 className="mb-4 text-3xl font-bold tracking-tight md:text-4xl lg:text-5xl">
-            Complete Solutions for Your Business
-          </h2>
-          <p className="mx-auto max-w-2xl text-base text-muted-foreground md:text-lg">
-            Everything you need to build, launch, and scale your digital
-            products with confidence
-          </p>
-        </motion.div>
+type Mode = "view" | "admin";
 
-        {/* Services Grid */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 md:gap-6">
-          {services.map((service, index) => {
-            const Icon = service.icon;
+type Props = {
+	departments: Department[];
+	mode?: Mode;
+	heading?: string;
+	subheading?: string;
+	onGenerateCode?: (dept: Department) => Promise<void> | void;
+	onEdit?: (dept: Department) => void;
+	onDelete?: (dept: Department) => Promise<void> | void;
+	onCreate?: () => void;
+};
 
-            return (
-              <motion.div
-                key={service.title}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1, duration: 0.5 }}
-                whileHover={{ y: -5 }}
-              >
-                <Card className="group relative h-full overflow-hidden border-border/50 bg-card p-4 transition-all hover:border-primary/50 hover:shadow-xl md:p-6">
-                  {/* Gradient overlay */}
-                  <motion.div
-                    className={`absolute inset-0 ${service.bgColor} opacity-0 transition-opacity duration-500 group-hover:opacity-100`}
-                  />
+export function ServicesGridBlock({
+	departments,
+	mode = "view",
+	heading = "Government Departments",
+	subheading = "Browse departments and their verification codes.",
+	onGenerateCode,
+	onEdit,
+	onDelete,
+	onCreate,
+}: Props) {
+	const [copiedId, setCopiedId] = useState<string | null>(null);
+	const [busyId, setBusyId] = useState<string | null>(null);
 
-                  <div className="relative z-10">
-                    {/* Icon */}
-                    <motion.div transition={{ duration: 0.6 }} className="mb-4">
-                      <div
-                        className={`w-fit rounded-xl ${service.bgColor} p-3`}
-                      >
-                        <Icon
-                          className={`h-6 w-6 ${service.iconColor} md:h-7 md:w-7`}
-                        />
-                      </div>
-                    </motion.div>
+	const handleCopy = async (dept: Department) => {
+		if (!dept.verificationCode) return;
+		try {
+			await navigator.clipboard.writeText(dept.verificationCode);
+			setCopiedId(dept.id);
+			setTimeout(() => setCopiedId((id) => (id === dept.id ? null : id)), 1600);
+		} catch {
+			/* clipboard denied */
+		}
+	};
 
-                    {/* Content */}
-                    <h3 className="mb-2 text-lg font-semibold md:text-xl">
-                      {service.title}
-                    </h3>
-                    <p className="mb-4 text-sm text-muted-foreground">
-                      {service.description}
-                    </p>
+	const handleGenerate = async (dept: Department) => {
+		if (!onGenerateCode) return;
+		setBusyId(dept.id);
+		try {
+			await onGenerateCode(dept);
+		} finally {
+			setBusyId(null);
+		}
+	};
 
-                    {/* Features */}
-                    <ul className="mb-4 space-y-1.5">
-                      {service.features.map((feature, idx) => (
-                        <motion.li
-                          key={feature}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.5 + idx * 0.1 }}
-                          className="flex items-center gap-2 text-xs text-muted-foreground"
-                        >
-                          <div className={`h-1 w-1 rounded-full bg-primary`} />
-                          {feature}
-                        </motion.li>
-                      ))}
-                    </ul>
+	return (
+		<section className="w-full">
+			<motion.div
+				initial={{ opacity: 0, y: -20 }}
+				animate={{ opacity: 1, y: 0 }}
+				transition={{ duration: 0.5 }}
+				className="mb-8 flex flex-wrap items-end justify-between gap-4"
+			>
+				<div>
+					<Badge className="mb-2" variant="secondary">
+						{mode === "admin" ? "Admin · Manage" : "Directory"}
+					</Badge>
+					<h2 className="mb-1 text-2xl font-bold tracking-tight md:text-3xl">{heading}</h2>
+					<p className="max-w-2xl text-sm text-muted-foreground md:text-base">{subheading}</p>
+				</div>
+				{mode === "admin" && onCreate && (
+					<Button onClick={onCreate}>+ New department</Button>
+				)}
+			</motion.div>
 
-                    {/* CTA */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="group/btn w-full text-xs md:text-sm"
-                    >
-                      Learn More
-                      <motion.span
-                        className="ml-2"
-                        animate={{ x: [0, 3, 0] }}
-                        transition={{
-                          repeat: Infinity,
-                          duration: 1.5,
-                          ease: "easeInOut",
-                        }}
-                      >
-                        →
-                      </motion.span>
-                    </Button>
-                  </div>
-                </Card>
-              </motion.div>
-            );
-          })}
-        </div>
+			<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 md:gap-5">
+				{departments.map((d, index) => {
+					const codeAssigned = !!d.verificationCode;
+					return (
+						<motion.div
+							key={d.id}
+							initial={{ opacity: 0, y: 16 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ delay: Math.min(index * 0.02, 0.3), duration: 0.4 }}
+						>
+							<Card className="group relative h-full overflow-hidden border-border/50 bg-card p-4 transition-all hover:border-primary/50 hover:shadow-xl md:p-5">
+								<div
+									className="absolute inset-x-0 top-0 h-1"
+									style={{ backgroundColor: d.color }}
+								/>
+								<div className="relative z-10">
+									<div className="mb-3 flex items-start gap-3">
+										<div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white p-1.5 ring-1 ring-border/60">
+											<Image
+												src={DEPT_LOGO}
+												alt={`${d.name} logo`}
+												width={36}
+												height={36}
+												className="h-9 w-9 object-contain"
+											/>
+										</div>
+										<div className="min-w-0 flex-1">
+											<h3 className="truncate text-base font-semibold md:text-lg" title={d.name}>
+												{d.name}
+											</h3>
+											{d.headName && (
+												<p className="truncate text-xs text-muted-foreground" title={d.headName}>
+													{d.headName}
+												</p>
+											)}
+										</div>
+									</div>
 
-        {/* Bottom CTA */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1, duration: 0.5 }}
-          className="mt-12 text-center md:mt-16"
-        >
-          <p className="mb-4 text-sm text-muted-foreground md:text-base">
-            Need a custom solution?
-          </p>
-          <Button size="lg">Contact Our Team</Button>
-        </motion.div>
-      </div>
-    </section>
-  );
+									<dl className="mb-3 space-y-1 border-t border-border/60 pt-3 text-xs text-muted-foreground">
+										{d.officerEmail && (
+											<div className="flex gap-1.5">
+												<dt className="font-medium text-foreground/80">Email:</dt>
+												<dd className="truncate" title={d.officerEmail}>
+													{d.officerEmail}
+												</dd>
+											</div>
+										)}
+										{d.officerContact && (
+											<div className="flex gap-1.5">
+												<dt className="font-medium text-foreground/80">Contact:</dt>
+												<dd>{d.officerContact}</dd>
+											</div>
+										)}
+										{d.officerAddress && (
+											<div className="flex gap-1.5">
+												<dt className="font-medium text-foreground/80">Addr:</dt>
+												<dd className="line-clamp-2" title={d.officerAddress}>
+													{d.officerAddress}
+												</dd>
+											</div>
+										)}
+									</dl>
+
+									<div className="mb-3 flex items-center justify-between rounded-lg border border-border/60 bg-muted/40 px-3 py-2">
+										<span className="text-xs text-muted-foreground">Code</span>
+										<div className="flex items-center gap-2">
+											{codeAssigned ? (
+												<>
+													<Badge variant="outline" className="font-mono">
+														{d.verificationCode}
+													</Badge>
+													<button
+														type="button"
+														onClick={() => handleCopy(d)}
+														className="text-muted-foreground hover:text-foreground"
+														aria-label="Copy verification code"
+													>
+														{copiedId === d.id ? (
+															<Check className="h-3.5 w-3.5 text-emerald-500" />
+														) : (
+															<Copy className="h-3.5 w-3.5" />
+														)}
+													</button>
+												</>
+											) : (
+												<Badge variant="secondary" className="text-xs">
+													Not assigned
+												</Badge>
+											)}
+										</div>
+									</div>
+
+									{mode === "admin" && (
+										<div className="flex flex-wrap gap-2">
+											<Button
+												size="sm"
+												variant={codeAssigned ? "outline" : "default"}
+												onClick={() => handleGenerate(d)}
+												disabled={busyId === d.id}
+												className="flex-1 text-xs"
+											>
+												<RefreshCw className="mr-1 h-3 w-3" />
+												{busyId === d.id
+													? "Generating…"
+													: codeAssigned
+													? "Regenerate"
+													: "Generate code"}
+											</Button>
+											{onEdit && (
+												<Button
+													size="sm"
+													variant="ghost"
+													onClick={() => onEdit(d)}
+													className="text-xs"
+												>
+													<Edit3 className="h-3 w-3" />
+												</Button>
+											)}
+											{onDelete && (
+												<Button
+													size="sm"
+													variant="ghost"
+													onClick={() => onDelete(d)}
+													className="text-xs text-destructive hover:text-destructive"
+												>
+													<Trash className="h-3 w-3" />
+												</Button>
+											)}
+										</div>
+									)}
+								</div>
+							</Card>
+						</motion.div>
+					);
+				})}
+			</div>
+		</section>
+	);
 }

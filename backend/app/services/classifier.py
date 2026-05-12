@@ -3,7 +3,7 @@
 Resolution order:
 1. If USE_LOCAL_ML=true, lazy-load transformers zero-shot pipeline (heavy).
 2. Else if HF_API_TOKEN set, call HuggingFace Inference API (fast, no install).
-3. Else fall back to keyword-based heuristic (always available).
+3. Else fall back to keyword-based heuristic against the live department set.
 """
 
 from __future__ import annotations
@@ -11,8 +11,9 @@ from __future__ import annotations
 import asyncio
 import math
 import random
+import re
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Sequence
 
 import httpx
 
@@ -20,25 +21,25 @@ from app.config import get_settings
 
 settings = get_settings()
 
-DEPARTMENT_LABELS: dict[str, str] = {
-    "dept-electricity": "Electricity (power outages, billing, meters)",
-    "dept-water": "Water Supply (leaks, supply, contamination)",
-    "dept-sanitation": "Sanitation (waste, drainage, hygiene)",
-    "dept-roads": "Roads & Transport (potholes, signage, traffic)",
-    "dept-public-services": "Public Services (certificates, records, civic services)",
-    "dept-health": "Health & Hospitals (public health, hospitals)",
+URGENCY_KEYWORDS = [
+    "urgent", "immediate", "emergency", "dying", "hours", "danger",
+    "accident", "outbreak", "critical", "fatal",
+]
+NEGATIVES = [
+    "no ", "not ", "broken", "fail", "delay", "bad", "worse", "danger",
+    "rotten", "stench", "missing", "unsafe", "leak", "violation",
+]
+STOPWORDS = {
+    "the", "of", "and", "for", "to", "in", "on", "a", "an", "is", "are",
+    "&", "department", "division", "ministry",
 }
 
-DEPT_KEYWORDS: dict[str, list[str]] = {
-    "dept-electricity": ["power", "electricity", "light", "current", "meter", "substation", "voltage"],
-    "dept-water": ["water", "pipe", "supply", "leak", "tap", "drainage"],
-    "dept-sanitation": ["garbage", "waste", "trash", "drain", "sewer", "stench", "hygiene"],
-    "dept-roads": ["pothole", "road", "traffic", "highway", "street", "lane", "bridge"],
-    "dept-public-services": ["certificate", "document", "record", "office", "verification", "permit"],
-    "dept-health": ["dengue", "hospital", "health", "doctor", "fever", "outbreak", "fogging"],
-}
 
-URGENCY_KEYWORDS = ["urgent", "immediate", "emergency", "dying", "hours", "danger", "accident", "outbreak"]
+@dataclass
+class DeptKey:
+    id: str
+    name: str
+    tokens: set[str]
 
 
 @dataclass
@@ -60,45 +61,58 @@ def _priority_from_signals(urgency_hits: int, dept_score: int, sentiment: float)
     return "low"
 
 
-def _keyword_classify(text: str) -> ClassifyOutput:
+def _tokenize(text: str) -> list[str]:
+    return [t for t in re.split(r"[^a-zA-Z]+", text.lower()) if t and t not in STOPWORDS]
+
+
+def _dept_keys(departments: Sequence[tuple[str, str]]) -> list[DeptKey]:
+    keys: list[DeptKey] = []
+    for dept_id, name in departments:
+        toks = {t for t in _tokenize(name) if len(t) > 2}
+        keys.append(DeptKey(id=dept_id, name=name, tokens=toks))
+    return keys
+
+
+def _keyword_classify(text: str, dept_keys: list[DeptKey]) -> ClassifyOutput:
     lower = text.lower()
-    best_dept = "dept-public-services"
+    body_tokens = set(_tokenize(text))
+    best_id = dept_keys[0].id if dept_keys else "dept-unknown"
+    best_name = dept_keys[0].name if dept_keys else "Unknown"
     best_score = 0
-    for dept_id, keywords in DEPT_KEYWORDS.items():
-        score = sum(1 for k in keywords if k in lower)
+    for key in dept_keys:
+        score = len(key.tokens & body_tokens)
         if score > best_score:
-            best_dept = dept_id
             best_score = score
+            best_id = key.id
+            best_name = key.name
 
     urgency_hits = sum(1 for k in URGENCY_KEYWORDS if k in lower)
-    confidence = min(0.99, 0.65 + best_score * 0.06 + urgency_hits * 0.03)
+    confidence = min(0.99, 0.55 + best_score * 0.08 + urgency_hits * 0.03)
 
-    # Crude sentiment via negative-word density
-    negatives = ["no", "not", "broken", "fail", "delay", "bad", "worse", "danger", "rotten", "stench"]
-    sent_hits = sum(1 for n in negatives if n in lower)
-    sentiment = max(-1.0, -0.2 - sent_hits * 0.12)
+    sent_hits = sum(1 for n in NEGATIVES if n in lower)
+    sentiment = max(-1.0, -0.15 - sent_hits * 0.12)
 
     priority = _priority_from_signals(urgency_hits, best_score, sentiment)
 
     return ClassifyOutput(
-        department_id=best_dept,
-        department_label=DEPARTMENT_LABELS[best_dept],
+        department_id=best_id,
+        department_label=best_name,
         priority=priority,
         confidence=confidence,
         sentiment=sentiment,
     )
 
 
-async def _hf_inference_classify(text: str) -> ClassifyOutput | None:
-    """Call HF Inference API for zero-shot classification."""
-    if not settings.hf_api_token:
+async def _hf_inference_classify(
+    text: str, dept_keys: list[DeptKey]
+) -> ClassifyOutput | None:
+    if not settings.hf_api_token or not dept_keys:
         return None
+    labels = [k.name for k in dept_keys]
+    label_to_id = {k.name: k.id for k in dept_keys}
     url = f"https://api-inference.huggingface.co/models/{settings.hf_classifier_model}"
     headers = {"Authorization": f"Bearer {settings.hf_api_token}"}
-    payload = {
-        "inputs": text,
-        "parameters": {"candidate_labels": list(DEPARTMENT_LABELS.values())},
-    }
+    payload = {"inputs": text, "parameters": {"candidate_labels": labels}}
     try:
         async with httpx.AsyncClient(timeout=20.0) as client:
             r = await client.post(url, headers=headers, json=payload)
@@ -108,17 +122,14 @@ async def _hf_inference_classify(text: str) -> ClassifyOutput | None:
                 return None
             top_label = data["labels"][0]
             top_score = float(data["scores"][0])
-            dept_id = next((k for k, v in DEPARTMENT_LABELS.items() if v == top_label), "dept-public-services")
+            dept_id = label_to_id.get(top_label, dept_keys[0].id)
     except (httpx.HTTPError, ValueError):
         return None
 
-    # Sentiment via second HF model
     sentiment = await _hf_inference_sentiment(text)
-
     lower = text.lower()
     urgency_hits = sum(1 for k in URGENCY_KEYWORDS if k in lower)
-    dept_score = sum(1 for k in DEPT_KEYWORDS.get(dept_id, []) if k in lower)
-    priority = _priority_from_signals(urgency_hits, dept_score, sentiment)
+    priority = _priority_from_signals(urgency_hits, 2, sentiment)
 
     return ClassifyOutput(
         department_id=dept_id,
@@ -141,7 +152,6 @@ async def _hf_inference_sentiment(text: str) -> float:
             data = r.json()
             if isinstance(data, list) and data and isinstance(data[0], list):
                 scores = {item["label"].lower(): item["score"] for item in data[0]}
-                # Map to range [-1, 1]: positive contributes +, negative -
                 return scores.get("positive", 0) - scores.get("negative", 0)
     except (httpx.HTTPError, ValueError, KeyError):
         pass
@@ -156,25 +166,24 @@ def _get_local_pipeline():
     global _local_pipeline, _local_sentiment
     if _local_pipeline is None:
         from transformers import pipeline  # type: ignore[import-untyped]
-
         _local_pipeline = pipeline(
-            "zero-shot-classification",
-            model=settings.hf_classifier_model,
+            "zero-shot-classification", model=settings.hf_classifier_model
         )
         _local_sentiment = pipeline("sentiment-analysis", model=settings.hf_sentiment_model)
     return _local_pipeline, _local_sentiment
 
 
-async def _local_classify(text: str) -> ClassifyOutput:
+async def _local_classify(text: str, dept_keys: list[DeptKey]) -> ClassifyOutput:
     loop = asyncio.get_event_loop()
 
     def run():
         pipe, sent_pipe = _get_local_pipeline()
-        labels = list(DEPARTMENT_LABELS.values())
+        labels = [k.name for k in dept_keys]
+        label_to_id = {k.name: k.id for k in dept_keys}
         result = pipe(text, candidate_labels=labels)
         top_label = result["labels"][0]
         top_score = float(result["scores"][0])
-        dept_id = next(k for k, v in DEPARTMENT_LABELS.items() if v == top_label)
+        dept_id = label_to_id.get(top_label, dept_keys[0].id)
 
         sent_result = sent_pipe(text[:512])[0]
         label = sent_result["label"].lower()
@@ -185,16 +194,12 @@ async def _local_classify(text: str) -> ClassifyOutput:
             sentiment = score
         else:
             sentiment = 0.0
-
         return dept_id, top_label, top_score, sentiment
 
     dept_id, top_label, top_score, sentiment = await loop.run_in_executor(None, run)
-
     lower = text.lower()
     urgency_hits = sum(1 for k in URGENCY_KEYWORDS if k in lower)
-    dept_score = sum(1 for k in DEPT_KEYWORDS.get(dept_id, []) if k in lower)
-    priority = _priority_from_signals(urgency_hits, dept_score, sentiment)
-
+    priority = _priority_from_signals(urgency_hits, 2, sentiment)
     return ClassifyOutput(
         department_id=dept_id,
         department_label=top_label,
@@ -204,19 +209,30 @@ async def _local_classify(text: str) -> ClassifyOutput:
     )
 
 
-async def classify_text(text: str) -> ClassifyOutput:
-    """Public entrypoint with resolution order: local ML > HF API > keyword."""
+async def classify_text(
+    text: str, departments: Sequence[tuple[str, str]]
+) -> ClassifyOutput:
+    """Classify against the provided list of (department_id, name) tuples."""
+    keys = _dept_keys(departments)
+    if not keys:
+        return ClassifyOutput(
+            department_id="dept-unknown",
+            department_label="Unknown",
+            priority="low",
+            confidence=0.0,
+            sentiment=0.0,
+        )
+
     if settings.use_local_ml:
         try:
-            return await _local_classify(text)
+            return await _local_classify(text, keys)
         except Exception:  # noqa: BLE001
             pass
 
-    hf_result = await _hf_inference_classify(text)
+    hf_result = await _hf_inference_classify(text, keys)
     if hf_result is not None:
         return hf_result
-
-    return _keyword_classify(text)
+    return _keyword_classify(text, keys)
 
 
 def build_severity_timeline(priority: str, ticks: int = 24) -> list[dict[str, Any]]:
@@ -246,7 +262,7 @@ def build_reasoning(subject: str, dept_label: str) -> list[dict[str, Any]]:
         {
             "step_id": "classify",
             "label": "Department classification",
-            "description": f"Top match → {dept_label} (cross-checked against 6 candidates)",
+            "description": f"Top match → {dept_label}",
             "duration_ms": 690,
         },
         {

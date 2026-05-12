@@ -12,18 +12,24 @@ type SessionUser = {
 	departmentId?: string;
 };
 
+type SignInArgs =
+	| { role: "citizen" | "admin"; email: string; password: string }
+	| { role: "dept-head"; email: string; verificationCode: string };
+
+type SignUpArgs = { name: string; email: string; password: string };
+
 type RoleContextValue = {
 	user: SessionUser | null;
 	role: Role | null;
 	token: string | null;
 	loading: boolean;
 	error: string | null;
-	signIn: (role: Role, verificationCode?: string) => Promise<void>;
+	signIn: (args: SignInArgs) => Promise<void>;
+	signUp: (args: SignUpArgs) => Promise<void>;
 	signOut: () => void;
 };
 
 const RoleContext = createContext<RoleContextValue | null>(null);
-
 const SESSION_KEY = "departmentsense.session";
 
 type StoredSession = { token: string; user: SessionUser };
@@ -44,25 +50,44 @@ export function RoleProvider({ children }: { children: ReactNode }) {
 		}
 	}, []);
 
-	const signIn = async (role: Role, verificationCode?: string) => {
+	const persist = (token: string, user: { id: string; name: string; email: string; role: Role; departmentId: string | null }) => {
+		const next: StoredSession = {
+			token,
+			user: {
+				id: user.id,
+				name: user.name,
+				email: user.email,
+				role: user.role,
+				departmentId: user.departmentId ?? undefined,
+			},
+		};
+		setSession(next);
+		if (typeof window !== "undefined") localStorage.setItem(SESSION_KEY, JSON.stringify(next));
+	};
+
+	const signIn = async (args: SignInArgs) => {
 		setLoading(true);
 		setError(null);
 		try {
-			const res = await api.login(role, verificationCode);
-			const next: StoredSession = {
-				token: res.token,
-				user: {
-					id: res.user.id,
-					name: res.user.name,
-					email: res.user.email,
-					role: res.user.role,
-					departmentId: res.user.departmentId ?? undefined,
-				},
-			};
-			setSession(next);
-			if (typeof window !== "undefined") localStorage.setItem(SESSION_KEY, JSON.stringify(next));
+			const res = await api.login(args);
+			persist(res.token, res.user);
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : "Login failed";
+			setError(msg);
+			throw err;
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const signUp = async (args: SignUpArgs) => {
+		setLoading(true);
+		setError(null);
+		try {
+			const res = await api.signup(args);
+			persist(res.token, res.user);
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : "Sign up failed";
 			setError(msg);
 			throw err;
 		} finally {
@@ -84,6 +109,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
 				loading,
 				error,
 				signIn,
+				signUp,
 				signOut,
 			}}
 		>

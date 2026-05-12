@@ -25,6 +25,9 @@ export default function RootLayout({
       suppressHydrationWarning
       className={cn("antialiased", fontMono.variable, "font-sans", outfit.variable, instrumentSerifHeading.variable)}
     >
+      <head>
+        <meta name="color-scheme" content="dark light" />
+      </head>
       <body>
         <ThemeProvider>
           <RoleProvider>{children}</RoleProvider>
